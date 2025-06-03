@@ -171,7 +171,7 @@ local function updateTextESP()
                         local health = math.floor(humanoid.Health)
                         local maxHealth = math.floor(humanoid.MaxHealth)
                         espLabels[player].health.Text = health .. "/" .. maxHealth
-                        espLabels[player].health.Position = Vector2.new(headPos.X, headPos.Y - 10) -- 20 pixels above name
+                        espLabels[player].health.Position = Vector2.new(headPos.X, headPos.Y - 14) -- 20 pixels above name
                         espLabels[player].health.Size = baseSize -- Fixed size
                         espLabels[player].health.Visible = true
                         
@@ -192,7 +192,7 @@ local function updateTextESP()
                     if espDistanceEnabled and distance > distanceThreshold then
                         local distanceRounded = math.floor(distance)
                         espLabels[player].distance.Text = distanceRounded .. "m"
-                        espLabels[player].distance.Position = Vector2.new(headPos.X, headPos.Y - 15) -- 40 pixels above name (20 above health)
+                        espLabels[player].distance.Position = Vector2.new(headPos.X, headPos.Y - 19) -- 40 pixels above name (20 above health)
                         espLabels[player].distance.Size = baseSize -- Fixed size
                         espLabels[player].distance.Visible = true
                         
