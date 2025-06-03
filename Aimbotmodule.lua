@@ -1,25 +1,21 @@
 local AimbotModule = {}
 
--- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
--- Settings
 local FOVRadius = 50
 local AimbotRange = 300
 local AimbotSmoothness = 0.1
 local useLerp = false
 
--- States
 local aimlockEnabled = false
 local nearestAimbotEnabled = false
 local aimlockConnection = nil
 local nearestConnection = nil
 
--- FOV Circle Setup
 local FOVGui = Instance.new("ScreenGui")
 FOVGui.Name = "FOVCircleGui"
 FOVGui.ResetOnSpawn = false
@@ -44,7 +40,6 @@ FOVOutline.Thickness = 1
 FOVOutline.Color = Color3.fromRGB(0, 255, 0)
 FOVOutline.Transparency = 0
 
--- Wallcheck function
 local function isVisible(targetPart)
     local origin = Camera.CFrame.Position
     local targetPos = targetPart.Position
@@ -58,7 +53,6 @@ local function isVisible(targetPart)
     return result == nil
 end
 
--- Get closest by distance
 local function getClosestEnemyByDistance()
     local closest, shortest = nil, AimbotRange
     for _, player in ipairs(Players:GetPlayers()) do
@@ -76,7 +70,6 @@ local function getClosestEnemyByDistance()
     return closest
 end
 
--- Get closest in FOV
 local function getClosestEnemyFOV()
     local closest, minDist = nil, FOVRadius
     for _, player in ipairs(Players:GetPlayers()) do
@@ -98,7 +91,6 @@ local function getClosestEnemyFOV()
     return closest
 end
 
---  bullet speed table with more accurate values
 local WeaponBulletSpeeds = {
     ["Lewis Gun"] = 3300, ["Madsen 1905"] = 3400, ["CSRG 1915"] = 3450,
     ["Doppelpistole 1912"] = 2400, ["Gewehr 98"] = 4200, ["Beholla 1915"] = 2200,
@@ -130,7 +122,6 @@ local function getCurrentBulletSpeed()
     return 3000
 end
 
--- Enhanced velocity prediction with acceleration compensation
 local function getPredictedPosition(targetPart, targetVelocity, distance, bulletSpeed)
     local timeToHit = distance / bulletSpeed
     
@@ -242,7 +233,6 @@ local function getOptimalAimPoint(target)
     return predictedPos
 end
 
--- Smooth look function
 local function smoothLook(targetPos)
     local camPos = Camera.CFrame.Position
     if useLerp then
@@ -255,7 +245,6 @@ local function smoothLook(targetPos)
     end
 end
 
--- Module functions
 function AimbotModule.setSmooth(state)
     useLerp = state
 end
