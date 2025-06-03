@@ -1,35 +1,28 @@
 local ESPModule = {}
 
--- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = game:GetService("Workspace").CurrentCamera
 
--- ESP Settings
 local espHighlights = {}
 local ESPColor = Color3.fromRGB(0, 255, 0)
 local espEnabled = false
 local espConnection = nil
 local highlightDistance = 300
 
--- Distance ESP Settings
 local espDistanceEnabled = false
 local espDistanceConnection = nil
 local distanceThreshold = 10
 
--- Health ESP Settings
 local espHealthEnabled = false
 local espHealthConnection = nil
 
--- Name ESP Settings  
 local espNameEnabled = false
 local espNameConnection = nil
 
--- Storage for text labels
 local espLabels = {} -- Combined storage for all text labels per player
 
--- ESP Highlight Functions (Only under 300m)
 local function createHighlight(player)
     local highlight = Instance.new("Highlight")
     highlight.Name = "ESP_Highlight"
@@ -56,13 +49,11 @@ local function updateESP()
             local distance = (LocalPlayer.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
             
             if humanoid.Health > 0 then
-                -- Only create highlights if under 300m
                 if distance <= highlightDistance then
                     if not espHighlights[player] then
                         createHighlight(player)
                     end
                 else
-                    -- Remove highlight if over 300m
                     removeHighlight(player)
                 end
             else
@@ -74,13 +65,11 @@ local function updateESP()
     end
 end
 
--- Worldwide Text ESP Functions (No Billboard, Pure Screen Text)
 local function createTextLabels(player)
     if not espLabels[player] then
         espLabels[player] = {}
     end
     
-    -- Distance Text
     if not espLabels[player].distance then
         local distanceText = Drawing.new("Text")
         distanceText.Size = 12
@@ -93,7 +82,6 @@ local function createTextLabels(player)
         espLabels[player].distance = distanceText
     end
     
-    -- Health Text
     if not espLabels[player].health then
         local healthText = Drawing.new("Text")
         healthText.Size = 12
@@ -106,7 +94,6 @@ local function createTextLabels(player)
         espLabels[player].health = healthText
     end
     
-    -- Name Text
     if not espLabels[player].name then
         local nameText = Drawing.new("Text")
         nameText.Size = 12
@@ -148,14 +135,11 @@ local function updateTextESP()
             if humanoid.Health > 0 then
                 createTextLabels(player)
                 
-                -- Get screen position of head
                 local headPos, onScreen = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 2, 0))
                 
                 if onScreen then
-                    -- Calculate consistent text size (no scaling with distance)
                     local baseSize = 12
                     
-                    -- Update Name Text (Directly above head)
                     if espNameEnabled then
                         espLabels[player].name.Text = player.Name
                         espLabels[player].name.Position = Vector2.new(headPos.X, headPos.Y)
@@ -166,16 +150,14 @@ local function updateTextESP()
                         espLabels[player].name.Visible = false
                     end
                     
-                    -- Update Health Text (Above name)
                     if espHealthEnabled then
                         local health = math.floor(humanoid.Health)
                         local maxHealth = math.floor(humanoid.MaxHealth)
                         espLabels[player].health.Text = health .. "/" .. maxHealth
-                        espLabels[player].health.Position = Vector2.new(headPos.X, headPos.Y - 15) -- 20 pixels above name
+                        espLabels[player].health.Position = Vector2.new(headPos.X, headPos.Y - 13) -- 20 pixels above name
                         espLabels[player].health.Size = baseSize -- Fixed size
                         espLabels[player].health.Visible = true
                         
-                        -- Color based on health percentage
                         local healthPercent = health / maxHealth
                         if healthPercent > 0.6 then
                             espLabels[player].health.Color = Color3.new(0, 1, 0) -- Green
@@ -188,15 +170,13 @@ local function updateTextESP()
                         espLabels[player].health.Visible = false
                     end
                     
-                    -- Update Distance Text (Above health)
                     if espDistanceEnabled and distance > distanceThreshold then
                         local distanceRounded = math.floor(distance)
                         espLabels[player].distance.Text = distanceRounded .. "m"
-                        espLabels[player].distance.Position = Vector2.new(headPos.X, headPos.Y - 21) -- 40 pixels above name (20 above health)
+                        espLabels[player].distance.Position = Vector2.new(headPos.X, headPos.Y - 26) -- 40 pixels above name (20 above health)
                         espLabels[player].distance.Size = baseSize -- Fixed size
                         espLabels[player].distance.Visible = true
                         
-                        -- Color based on distance
                         if distance > 200 then
                             espLabels[player].distance.Color = Color3.new(1, 0, 0) -- Red
                         elseif distance > 100 then
@@ -208,7 +188,6 @@ local function updateTextESP()
                         espLabels[player].distance.Visible = false
                     end
                 else
-                    -- Hide all text if not on screen
                     espLabels[player].distance.Visible = false
                     espLabels[player].health.Visible = false
                     espLabels[player].name.Visible = false
@@ -222,13 +201,11 @@ local function updateTextESP()
     end
 end
 
--- Clean up when players leave
 Players.PlayerRemoving:Connect(function(player)
     removeHighlight(player)
     removeTextLabels(player)
 end)
 
--- Module functions
 function ESPModule.toggleESP(state)
     espEnabled = state
     if state then
@@ -236,7 +213,6 @@ function ESPModule.toggleESP(state)
         espConnection = RunService.RenderStepped:Connect(updateESP)
     else
         if espConnection then espConnection:Disconnect() end
-        -- Clean up all highlights
         for player, _ in pairs(espHighlights) do
             if espHighlights[player] then
                 espHighlights[player]:Destroy()
@@ -257,7 +233,6 @@ function ESPModule.toggleDistance(state)
             espDistanceConnection:Disconnect()
             espDistanceConnection = nil
         end
-        -- Clean up all text labels if all text ESP disabled
         for player, _ in pairs(espLabels) do
             removeTextLabels(player)
         end
@@ -275,7 +250,6 @@ function ESPModule.toggleHealth(state)
             espDistanceConnection:Disconnect()
             espDistanceConnection = nil
         end
-        -- Clean up all text labels if all text ESP disabled
         if not espDistanceEnabled and not espNameEnabled then
             for player, _ in pairs(espLabels) do
                 removeTextLabels(player)
@@ -295,7 +269,6 @@ function ESPModule.toggleName(state)
             espDistanceConnection:Disconnect()
             espDistanceConnection = nil
         end
-        -- Clean up all text labels if all text ESP disabled
         if not espDistanceEnabled and not espHealthEnabled then
             for player, _ in pairs(espLabels) do
                 removeTextLabels(player)
