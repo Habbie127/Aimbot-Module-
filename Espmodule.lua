@@ -152,10 +152,14 @@ local function updateTextESP()
                 local headPos, onScreen = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 2, 0))
                 
                 if onScreen then
+                    -- Calculate consistent text size (no scaling with distance)
+                    local baseSize = 12
+                    
                     -- Update Name Text (Directly above head)
                     if espNameEnabled then
                         espLabels[player].name.Text = player.Name
                         espLabels[player].name.Position = Vector2.new(headPos.X, headPos.Y)
+                        espLabels[player].name.Size = baseSize -- Fixed size
                         espLabels[player].name.Visible = true
                         espLabels[player].name.Color = Color3.new(1, 1, 0) -- Yellow
                     else
@@ -168,6 +172,7 @@ local function updateTextESP()
                         local maxHealth = math.floor(humanoid.MaxHealth)
                         espLabels[player].health.Text = health .. "/" .. maxHealth
                         espLabels[player].health.Position = Vector2.new(headPos.X, headPos.Y - 20) -- 20 pixels above name
+                        espLabels[player].health.Size = baseSize -- Fixed size
                         espLabels[player].health.Visible = true
                         
                         -- Color based on health percentage
@@ -188,6 +193,7 @@ local function updateTextESP()
                         local distanceRounded = math.floor(distance)
                         espLabels[player].distance.Text = distanceRounded .. "m"
                         espLabels[player].distance.Position = Vector2.new(headPos.X, headPos.Y - 40) -- 40 pixels above name (20 above health)
+                        espLabels[player].distance.Size = baseSize -- Fixed size
                         espLabels[player].distance.Visible = true
                         
                         -- Color based on distance
