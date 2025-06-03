@@ -93,7 +93,7 @@ local function createTextLabels(player)
         espLabels[player].distance = distanceText
     end
     
-    -- Health Text (Left of distance)
+    -- Health Text
     if not espLabels[player].health then
         local healthText = Drawing.new("Text")
         healthText.Size = 12
@@ -106,7 +106,7 @@ local function createTextLabels(player)
         espLabels[player].health = healthText
     end
     
-    -- Name Text (Right of distance)
+    -- Name Text
     if not espLabels[player].name then
         local nameText = Drawing.new("Text")
         nameText.Size = 12
@@ -148,35 +148,26 @@ local function updateTextESP()
             if humanoid.Health > 0 then
                 createTextLabels(player)
                 
-                -- Get screen position
+                -- Get screen position of head
                 local headPos, onScreen = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 2, 0))
                 
                 if onScreen then
-                    -- Update Distance Text
-                    if espDistanceEnabled and distance > distanceThreshold then
-                        local distanceRounded = math.floor(distance)
-                        espLabels[player].distance.Text = distanceRounded .. "m"
-                        espLabels[player].distance.Position = Vector2.new(headPos.X, headPos.Y)
-                        espLabels[player].distance.Visible = true
-                        
-                        -- Color based on distance
-                        if distance > 200 then
-                            espLabels[player].distance.Color = Color3.new(1, 0, 0) -- Red
-                        elseif distance > 100 then
-                            espLabels[player].distance.Color = Color3.new(1, 1, 0) -- Yellow
-                        else
-                            espLabels[player].distance.Color = Color3.new(0, 1, 0) -- Green
-                        end
+                    -- Update Name Text (Directly above head)
+                    if espNameEnabled then
+                        espLabels[player].name.Text = player.Name
+                        espLabels[player].name.Position = Vector2.new(headPos.X, headPos.Y)
+                        espLabels[player].name.Visible = true
+                        espLabels[player].name.Color = Color3.new(1, 1, 0) -- Yellow
                     else
-                        espLabels[player].distance.Visible = false
+                        espLabels[player].name.Visible = false
                     end
                     
-                    -- Update Health Text (Left of distance)
+                    -- Update Health Text (Above name)
                     if espHealthEnabled then
                         local health = math.floor(humanoid.Health)
                         local maxHealth = math.floor(humanoid.MaxHealth)
                         espLabels[player].health.Text = health .. "/" .. maxHealth
-                        espLabels[player].health.Position = Vector2.new(headPos.X - 40, headPos.Y) -- Left position
+                        espLabels[player].health.Position = Vector2.new(headPos.X, headPos.Y - 20) -- 20 pixels above name
                         espLabels[player].health.Visible = true
                         
                         -- Color based on health percentage
@@ -192,14 +183,23 @@ local function updateTextESP()
                         espLabels[player].health.Visible = false
                     end
                     
-                    -- Update Name Text (Right of distance)
-                    if espNameEnabled then
-                        espLabels[player].name.Text = player.Name
-                        espLabels[player].name.Position = Vector2.new(headPos.X + 40, headPos.Y) -- Right position
-                        espLabels[player].name.Visible = true
-                        espLabels[player].name.Color = Color3.new(1, 1, 0) -- Yellow
+                    -- Update Distance Text (Above health)
+                    if espDistanceEnabled and distance > distanceThreshold then
+                        local distanceRounded = math.floor(distance)
+                        espLabels[player].distance.Text = distanceRounded .. "m"
+                        espLabels[player].distance.Position = Vector2.new(headPos.X, headPos.Y - 40) -- 40 pixels above name (20 above health)
+                        espLabels[player].distance.Visible = true
+                        
+                        -- Color based on distance
+                        if distance > 200 then
+                            espLabels[player].distance.Color = Color3.new(1, 0, 0) -- Red
+                        elseif distance > 100 then
+                            espLabels[player].distance.Color = Color3.new(1, 1, 0) -- Yellow
+                        else
+                            espLabels[player].distance.Color = Color3.new(0, 1, 0) -- Green
+                        end
                     else
-                        espLabels[player].name.Visible = false
+                        espLabels[player].distance.Visible = false
                     end
                 else
                     -- Hide all text if not on screen
