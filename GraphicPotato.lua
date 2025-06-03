@@ -1,430 +1,231 @@
-local GraphicsModule = {}
+local FastModeModule = {}
 
-local originalProperties = {}
-local destroyedObjects = {}
-local isOptimized = false
+FastModeModule.enabled = false
+FastModeModule.originalSettings = {}
+FastModeModule.processedParts = {}
+FastModeModule.connections = {}
 
-local workspace = game:GetService("Workspace")
-local players = game:GetService("Players")
-local lighting = game:GetService("Lighting")
-local runService = game:GetService("RunService")
-
-local objectsDestroyed = 0
-local objectsSimplified = 0
-
-local function isValidObject(obj)
-    return obj and obj.Parent and not obj.Parent:IsA("Player")
-end
-
-local function isPlayerObject(obj)
-    local player = players.LocalPlayer
-    if player and player.Character then
-        return obj:IsDescendantOf(player.Character)
-    end
-    return false
-end
-
-local function isImportantGameplay(obj)
-    if not obj or not obj.Name then return false end
-    
-    local name = obj.Name:lower()
-    local importantPatterns = {
-        "spawn", "checkpoint", "flag", "weapon", "gun", 
-        "health", "ladder", "stairs", "floor", "barrier"
-    }
-    
-    for _, pattern in pairs(importantPatterns) do
-        if name:find(pattern) then
-            return true
-        end
-    end
-    
-    return false
-end
-
-local function storeOriginalProperties(obj)
-    if not isValidObject(obj) or originalProperties[obj] then 
-        return 
-    end
-    
-    originalProperties[obj] = {}
-    
+local function storeOriginalSettings()
     pcall(function()
-        if obj:IsA("MeshPart") then
-            originalProperties[obj].MeshId = obj.MeshId
-            originalProperties[obj].TextureID = obj.TextureID
-        elseif obj:IsA("SpecialMesh") then
-            originalProperties[obj].MeshId = obj.MeshId
-            originalProperties[obj].TextureId = obj.TextureId
-            originalProperties[obj].Scale = obj.Scale
-        elseif obj:IsA("Part") then
-            originalProperties[obj].Material = obj.Material
-            originalProperties[obj].Color = obj.Color
-        end
+        local renderSettings = settings():GetService("RenderSettings")
+        local lighting = game:GetService("Lighting")
         
-        if obj:IsA("BasePart") then
-            originalProperties[obj].Transparency = obj.Transparency
-        end
+        FastModeModule.originalSettings = {
+            QualityLevel = renderSettings.QualityLevel,
+            GlobalShadows = lighting.GlobalShadows,
+            FogEnd = lighting.FogEnd,
+            FogStart = lighting.FogStart,
+            Brightness = lighting.Brightness,
+            EnvironmentDiffuseScale = lighting.EnvironmentDiffuseScale,
+            EnvironmentSpecularScale = lighting.EnvironmentSpecularScale,
+            ShadowSoftness = lighting.ShadowSoftness,
+            Technology = lighting.Technology
+        }
     end)
 end
 
-local function processObjectsBatch(objects, processFunc, batchSize)
-    batchSize = batchSize or 50
-    local index = 1
-    
-    local function processBatch()
-        local processed = 0
-        while index <= #objects and processed < batchSize do
-            local obj = objects[index]
-            if isValidObject(obj) then
-                pcall(processFunc, obj)
-            end
-            index = index + 1
-            processed = processed + 1
-        end
-        
-        if index <= #objects then
-            runService.Heartbeat:Wait()
-            processBatch()
-        end
-    end
-    
-    processBatch()
-end
-
-local function destroyGrassAndVegetation()
-    local toDestroy = {}
-    
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if #toDestroy >= 1000 then break end -- Limit to prevent lag
-        
-        if obj:IsA("BasePart") and isValidObject(obj) and 
-           not isPlayerObject(obj) and not isImportantGameplay(obj) then
-            
-            local name = obj.Name:lower()
-            local size = obj.Size
-            local shouldDestroy = false
-            
-            local grassPatterns = {"grass", "weed", "plant", "flower", "bush", "leaf"}
-            for _, pattern in pairs(grassPatterns) do
-                if name:find(pattern) then
-                    shouldDestroy = true
-                    break
-                end
-            end
-            
-            if not shouldDestroy and size.Y < 2 and size.X < 3 and size.Z < 3 then
-                shouldDestroy = true
-            end
-            
-            if not shouldDestroy and size.Y < 4 then
-                pcall(function()
-                    local color = obj.Color
-                    if color.G > 0.4 and color.G > color.R then
-                        shouldDestroy = true
-                    end
-                end)
-            end
-            
-            if shouldDestroy then
-                table.insert(toDestroy, obj)
-            end
-        end
-    end
-    
-    processObjectsBatch(toDestroy, function(obj)
-        if isValidObject(obj) then
-            obj:Destroy()
-            objectsDestroyed = objectsDestroyed + 1
-        end
-    end, 25)
-    
-    print("Destroyed " .. #toDestroy .. " grass/vegetation objects")
-end
-
-local function destroySmallProps()
-    local toDestroy = {}
-    
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if #toDestroy >= 500 then break end
-        
-        if obj:IsA("BasePart") and isValidObject(obj) and 
-           not isPlayerObject(obj) and not isImportantGameplay(obj) then
-            
-            local name = obj.Name:lower()
-            local size = obj.Size
-            local shouldDestroy = false
-            
-            local propPatterns = {"debris", "trash", "scrap", "detail", "decoration"}
-            for _, pattern in pairs(propPatterns) do
-                if name:find(pattern) then
-                    shouldDestroy = true
-                    break
-                end
-            end
-            
-            if not shouldDestroy and size.Y < 1.5 and size.X < 1.5 and size.Z < 1.5 then
-                shouldDestroy = true
-            end
-            
-            if shouldDestroy then
-                table.insert(toDestroy, obj)
-            end
-        end
-    end
-    
-    processObjectsBatch(toDestroy, function(obj)
-        if isValidObject(obj) then
-            obj:Destroy()
-            objectsDestroyed = objectsDestroyed + 1
-        end
-    end, 25)
-    
-    print("Destroyed " .. #toDestroy .. " small props/debris")
-end
-
-local function simplifyTrees()
-    local treesToSimplify = {}
-    
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if #treesToSimplify >= 200 then break end
-        
-        if obj:IsA("BasePart") and isValidObject(obj) and not isPlayerObject(obj) then
-            local name = obj.Name:lower()
-            local isTree = false
-            
-            local treePatterns = {"tree", "trunk", "branch", "bark", "wood"}
-            for _, pattern in pairs(treePatterns) do
-                if name:find(pattern) then
-                    isTree = true
-                    break
-                end
-            end
-            
-            if not isTree and obj.Size.Y > 6 then
-                pcall(function()
-                    local color = obj.Color
-                    if color.R > 0.2 and color.R < 0.7 and color.G > 0.1 and color.G < 0.5 then
-                        isTree = true
-                    end
-                end)
-            end
-            
-            if isTree then
-                table.insert(treesToSimplify, obj)
-            end
-        end
-    end
-    
-    processObjectsBatch(treesToSimplify, function(obj)
-        if not isValidObject(obj) then return end
-        
-        storeOriginalProperties(obj)
-        
-        pcall(function()
-            if obj:IsA("MeshPart") then
-                obj.MeshId = ""
-                obj.TextureID = ""
-                obj.Shape = Enum.PartType.Block
-                obj.Material = Enum.Material.Wood
-                obj.Color = Color3.new(0.35, 0.18, 0.05)
-            end
-            
-            for _, child in pairs(obj:GetChildren()) do
-                if child:IsA("Decal") or child:IsA("Texture") or child:IsA("SurfaceGui") then
-                    child:Destroy()
-                end
-            end
-            
-            objectsSimplified = objectsSimplified + 1
-        end)
-    end, 20)
-end
-
-local function simplifyBuildings()
-    local buildingsToSimplify = {}
-    
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if #buildingsToSimplify >= 200 then break end
-        
-        if obj:IsA("BasePart") and isValidObject(obj) and not isPlayerObject(obj) then
-            local name = obj.Name:lower()
-            local isBuilding = false
-            
-            local buildingPatterns = {"house", "building", "wall", "roof", "concrete", "brick"}
-            for _, pattern in pairs(buildingPatterns) do
-                if name:find(pattern) then
-                    isBuilding = true
-                    break
-                end
-            end
-            
-            if isBuilding then
-                table.insert(buildingsToSimplify, obj)
-            end
-        end
-    end
-    
-    processObjectsBatch(buildingsToSimplify, function(obj)
-        if not isValidObject(obj) then return end
-        
-        storeOriginalProperties(obj)
-        
-        pcall(function()
-            if obj:IsA("MeshPart") then
-                obj.MeshId = ""
-                obj.TextureID = ""
-                obj.Shape = Enum.PartType.Block
-                obj.Material = Enum.Material.Concrete
-                obj.Color = Color3.new(0.5, 0.5, 0.5)
-            end
-            
-            for _, child in pairs(obj:GetChildren()) do
-                if child:IsA("Decal") or child:IsA("Texture") or child:IsA("SurfaceGui") then
-                    child:Destroy()
-                end
-            end
-            
-            objectsSimplified = objectsSimplified + 1
-        end)
-    end, 20)
-end
-
-local function removeEffects()
-    local effectsToRemove = {}
-    local effectsRemoved = 0
-    
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if not isPlayerObject(obj) then
-            if obj:IsA("ParticleEmitter") or obj:IsA("Fire") or obj:IsA("Smoke") or 
-               obj:IsA("Beam") or obj:IsA("Trail") or obj:IsA("Explosion") or
-               obj:IsA("PointLight") or obj:IsA("SpotLight") or obj:IsA("SurfaceLight") then
-                table.insert(effectsToRemove, obj)
-            end
-        end
-    end
-    
-    for _, obj in pairs(effectsToRemove) do
-        pcall(function()
-            if obj and obj.Parent then
-                obj:Destroy()
-                effectsRemoved = effectsRemoved + 1
-            end
-        end)
-    end
-    
-    print("Removed " .. effectsRemoved .. " particle/lighting effects")
-end
-
-function GraphicsModule.enableFastMode()
-    if isOptimized then return end
-    
-    print("🚀 MOBILE ULTRA MODE - Maximum Performance Optimization...")
-    
-    objectsDestroyed = 0
-    objectsSimplified = 0
-    
+local function optimizePart(part)
     pcall(function()
-        storeOriginalProperties(lighting)
-        lighting.GlobalShadows = false
-        lighting.FogEnd = 200
-        lighting.FogStart = 20
-        lighting.Brightness = 0.8
-        lighting.OutdoorAmbient = Color3.new(0.5, 0.5, 0.5)
-        lighting.Ambient = Color3.new(0.4, 0.4, 0.4)
-    end)
-    
-    spawn(function()
-        destroyGrassAndVegetation()
-        wait(0.5)
-        destroySmallProps()
-        wait(0.5)
-        removeEffects()
-        wait(0.5)
-        simplifyTrees()
-        wait(0.5)
-        simplifyBuildings()
+        if not part or not part.Parent or FastModeModule.processedParts[part] then 
+            return 
+        end
         
-        pcall(function()
-            settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-            
-            if game:GetService("UserInputService").TouchEnabled then
-                workspace.StreamingEnabled = true
-                workspace.StreamingMinRadius = 64
-                workspace.StreamingTargetRadius = 128
-            end
-        end)
+        FastModeModule.processedParts[part] = {
+            originalMaterial = part.Material,
+            originalReflectance = part.Reflectance,
+            originalTransparency = part.Transparency,
+            originalCastShadow = part.CastShadow
+        }
         
-        isOptimized = true
+        if part.Material ~= Enum.Material.Air then
+            part.Material = Enum.Material.Plastic
+            part.Reflectance = 0
+            part.CastShadow = false
+        end
         
-        print("✅ ULTRA MODE ENABLED!")
-        print("📊 Performance Stats:")
-        print("   🗑️ Objects Destroyed: " .. objectsDestroyed)
-        print("   🔧 Objects Simplified: " .. objectsSimplified)
-        print("   📱 Mobile optimizations applied")
-        print("   🚀 Performance boost applied!")
-    end)
-end
-
-function GraphicsModule.restoreOriginalGraphics()
-    if not isOptimized then return end
-    
-    print("Restoring original graphics...")
-    
-    if originalProperties[lighting] then
-        for prop, value in pairs(originalProperties[lighting]) do
+        for _, child in pairs(part:GetChildren()) do
             pcall(function()
-                if lighting[prop] ~= nil then
-                    lighting[prop] = value
+                if child:IsA("Decal") or child:IsA("Texture") then
+                    child.Transparency = 0.95
+                    child.StudsPerTileU = math.max(child.StudsPerTileU * 2, 4)
+                    child.StudsPerTileV = math.max(child.StudsPerTileV * 2, 4)
+                elseif child:IsA("SurfaceGui") then
+                    child.Enabled = false
+                elseif child:IsA("ParticleEmitter") then
+                    child.Enabled = false
+                elseif child:IsA("Fire") or child:IsA("Smoke") then
+                    child.Enabled = false
+                elseif child:IsA("PointLight") or child:IsA("SpotLight") or child:IsA("SurfaceLight") then
+                    child.Enabled = false
+                elseif child:IsA("Beam") or child:IsA("Trail") then
+                    child.Enabled = false
                 end
             end)
         end
-    end
-    
-    for obj, props in pairs(originalProperties) do
-        if obj and obj.Parent then
-            for prop, value in pairs(props) do
-                pcall(function()
-                    if obj[prop] ~= nil then
-                        obj[prop] = value
-                    end
-                end)
+    end)
+end
+
+local function restorePart(part)
+    pcall(function()
+        if not part or not part.Parent or not FastModeModule.processedParts[part] then 
+            return 
+        end
+        
+        local original = FastModeModule.processedParts[part]
+        part.Material = original.originalMaterial
+        part.Reflectance = original.originalReflectance
+        part.Transparency = original.originalTransparency
+        part.CastShadow = original.originalCastShadow
+        
+        for _, child in pairs(part:GetChildren()) do
+            pcall(function()
+                if child:IsA("Decal") or child:IsA("Texture") then
+                    child.Transparency = 0
+                    child.StudsPerTileU = child.StudsPerTileU / 2
+                    child.StudsPerTileV = child.StudsPerTileV / 2
+                elseif child:IsA("SurfaceGui") then
+                    child.Enabled = true
+                elseif child:IsA("ParticleEmitter") then
+                    child.Enabled = true
+                elseif child:IsA("Fire") or child:IsA("Smoke") then
+                    child.Enabled = true
+                elseif child:IsA("PointLight") or child:IsA("SpotLight") or child:IsA("SurfaceLight") then
+                    child.Enabled = true
+                elseif child:IsA("Beam") or child:IsA("Trail") then
+                    child.Enabled = true
+                end
+            end)
+        end
+        
+        FastModeModule.processedParts[part] = nil
+    end)
+end
+
+local function optimizeWorkspace(parent)
+    pcall(function()
+        for _, obj in pairs(parent:GetDescendants()) do
+            if obj:IsA("BasePart") then
+                optimizePart(obj)
+            elseif obj:IsA("Explosion") then
+                obj.Visible = false
+            elseif obj:IsA("Sound") then
+                obj.Volume = math.max(obj.Volume * 0.3, 0.1)
+            elseif obj:IsA("ParticleEmitter") or obj:IsA("Fire") or obj:IsA("Smoke") then
+                obj.Enabled = false
             end
         end
-    end
-    
-    pcall(function()
-        settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
-        workspace.StreamingEnabled = false
     end)
-    
-    originalProperties = {}
-    isOptimized = false
-    
-    print("Graphics restoration complete!")
-    if #destroyedObjects > 0 then
-        print("💡 Some objects were destroyed - rejoin to fully restore")
-    end
 end
 
-function GraphicsModule.toggleOptimization()
-    if isOptimized then
-        GraphicsModule.restoreOriginalGraphics()
+function FastModeModule.enable()
+    pcall(function()
+        if FastModeModule.enabled then 
+            return 
+        end
+        
+        storeOriginalSettings()
+        
+        local renderSettings = settings():GetService("RenderSettings")
+        local lighting = game:GetService("Lighting")
+        
+        renderSettings.QualityLevel = Enum.QualityLevel.Level01
+        
+        lighting.GlobalShadows = false
+        lighting.FogEnd = 50
+        lighting.FogStart = 0
+        lighting.Brightness = 0.8
+        lighting.EnvironmentDiffuseScale = 0.1
+        lighting.EnvironmentSpecularScale = 0.1
+        lighting.ShadowSoftness = 0
+        
+        if lighting.Technology ~= Enum.Technology.Compatibility then
+            lighting.Technology = Enum.Technology.Compatibility
+        end
+        
+        optimizeWorkspace(workspace)
+        
+        FastModeModule.connections.descendantAdded = workspace.DescendantAdded:Connect(function(obj)
+            if obj:IsA("BasePart") then
+                wait(0.05) -- Small delay for object initialization
+                optimizePart(obj)
+            elseif obj:IsA("ParticleEmitter") or obj:IsA("Fire") or obj:IsA("Smoke") then
+                obj.Enabled = false
+            elseif obj:IsA("Sound") then
+                obj.Volume = math.max(obj.Volume * 0.3, 0.1)
+            end
+        end)
+        
+        FastModeModule.connections.childAdded = workspace.ChildAdded:Connect(function(child)
+            if child:IsA("Model") or child:IsA("Folder") then
+                wait(0.1)
+                optimizeWorkspace(child)
+            end
+        end)
+        
+        FastModeModule.enabled = true
+        warn("[Fast Mode] ENABLED - Performance optimized for mobile")
+    end)
+end
+
+function FastModeModule.disable()
+    pcall(function()
+        if not FastModeModule.enabled then 
+            return 
+        end
+        
+        for _, connection in pairs(FastModeModule.connections) do
+            if connection then
+                connection:Disconnect()
+            end
+        end
+        FastModeModule.connections = {}
+        
+        if FastModeModule.originalSettings and next(FastModeModule.originalSettings) then
+            local renderSettings = settings():GetService("RenderSettings")
+            local lighting = game:GetService("Lighting")
+            
+            renderSettings.QualityLevel = FastModeModule.originalSettings.QualityLevel
+            lighting.GlobalShadows = FastModeModule.originalSettings.GlobalShadows
+            lighting.FogEnd = FastModeModule.originalSettings.FogEnd
+            lighting.FogStart = FastModeModule.originalSettings.FogStart
+            lighting.Brightness = FastModeModule.originalSettings.Brightness
+            lighting.EnvironmentDiffuseScale = FastModeModule.originalSettings.EnvironmentDiffuseScale
+            lighting.EnvironmentSpecularScale = FastModeModule.originalSettings.EnvironmentSpecularScale
+            lighting.ShadowSoftness = FastModeModule.originalSettings.ShadowSoftness
+            lighting.Technology = FastModeModule.originalSettings.Technology
+        end
+        
+        for part, _ in pairs(FastModeModule.processedParts) do
+            restorePart(part)
+        end
+        
+        FastModeModule.processedParts = {}
+        
+        FastModeModule.enabled = false
+        warn("[Fast Mode] DISABLED - Graphics restored to original")
+    end)
+end
+
+function FastModeModule.toggle(state)
+    if state then
+        FastModeModule.enable()
     else
-        GraphicsModule.enableFastMode()
+        FastModeModule.disable()
     end
 end
 
-function GraphicsModule.isOptimized()
-    return isOptimized
+function FastModeModule.isEnabled()
+    return FastModeModule.enabled
 end
 
-function GraphicsModule.getStats()
-    return {
-        isOptimized = isOptimized,
-        objectsDestroyed = objectsDestroyed,
-        objectsSimplified = objectsSimplified
-    }
+function FastModeModule.cleanup()
+    pcall(function()
+        FastModeModule.disable()
+    end)
 end
 
-return GraphicsModule
+game:BindToClose(function()
+    FastModeModule.cleanup()
+end)
+
+return FastModeModule
