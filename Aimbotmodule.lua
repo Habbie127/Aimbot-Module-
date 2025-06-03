@@ -40,24 +40,91 @@ FOVOutline.Thickness = 1
 FOVOutline.Color = Color3.fromRGB(0, 255, 0)
 FOVOutline.Transparency = 0
 
+-- Enhanced visibility checker with multiple raycast points
 local function isVisible(targetPart)
+    if not targetPart then return false end
+    
     local origin = Camera.CFrame.Position
     local targetPos = targetPart.Position
-    local direction = targetPos - origin
+    local targetSize = targetPart.Size
+    
+    -- Create multiple test points around the target
+    local testPoints = {
+        targetPos, -- Center
+        targetPos + Vector3.new(targetSize.X/3, 0, 0), -- Right
+        targetPos - Vector3.new(targetSize.X/3, 0, 0), -- Left
+        targetPos + Vector3.new(0, targetSize.Y/3, 0), -- Top
+        targetPos - Vector3.new(0, targetSize.Y/3, 0), -- Bottom
+    }
+    
+    local visiblePoints = 0
+    local totalPoints = #testPoints
+    
+    for _, testPoint in ipairs(testPoints) do
+        local direction = testPoint - origin
+        local distance = direction.Magnitude
+        
+        local raycastParams = RaycastParams.new()
+        raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+        raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, targetPart.Parent}
+        
+        local result = Workspace:Raycast(origin, direction.Unit * distance, raycastParams)
+        
+        if not result then
+            visiblePoints = visiblePoints + 1
+        end
+    end
+    
+    -- Target is considered visible if at least 40% of test points are visible
+    return (visiblePoints / totalPoints) >= 0.4
+end
 
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, targetPart.Parent}
-
-    local result = Workspace:Raycast(origin, direction, raycastParams)
-    return result == nil
+-- Safe function to check if player has valid character and humanoid
+local function isValidTarget(player)
+    if not player or player == LocalPlayer then
+        return false
+    end
+    
+    -- Check if player has character
+    if not player.Character then
+        return false
+    end
+    
+    -- Check if character has required parts
+    local humanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart")
+    local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+    
+    if not humanoidRootPart or not humanoid then
+        return false
+    end
+    
+    -- Safely check humanoid health
+    local success, health = pcall(function()
+        return humanoid.Health
+    end)
+    
+    if not success or health <= 0 then
+        return false
+    end
+    
+    -- Check team (safely handle cases where Team might be nil)
+    local playerTeam = player.Team
+    local localTeam = LocalPlayer.Team
+    
+    if playerTeam and localTeam and playerTeam == localTeam then
+        return false
+    end
+    
+    return true
 end
 
 local function getClosestEnemyByDistance()
     local closest, shortest = nil, AimbotRange
+    
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Team ~= LocalPlayer.Team and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character.Humanoid.Health > 0 then
+        if isValidTarget(player) then
             local hrp = player.Character.HumanoidRootPart
+            
             if isVisible(hrp) then
                 local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
                 if distance <= shortest then
@@ -67,14 +134,17 @@ local function getClosestEnemyByDistance()
             end
         end
     end
+    
     return closest
 end
 
 local function getClosestEnemyFOV()
     local closest, minDist = nil, FOVRadius
+    
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Team ~= LocalPlayer.Team and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character.Humanoid.Health > 0 then
+        if isValidTarget(player) then
             local hrp = player.Character.HumanoidRootPart
+            
             if isVisible(hrp) then
                 local screenPos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
                 if onScreen then
@@ -88,6 +158,7 @@ local function getClosestEnemyFOV()
             end
         end
     end
+    
     return closest
 end
 
@@ -127,7 +198,12 @@ local function getPredictedPosition(targetPart, targetVelocity, distance, bullet
     
     local currentPos = targetPart.Position
     
-    local currentVel = targetPart.Parent.HumanoidRootPart.Velocity
+    -- Safely get velocity
+    local currentVel = Vector3.new(0, 0, 0)
+    if targetPart.Parent and targetPart.Parent:FindFirstChild("HumanoidRootPart") then
+        currentVel = targetPart.Parent.HumanoidRootPart.Velocity
+    end
+    
     local velocityMagnitude = currentVel.Magnitude
     
     local predictionVel = targetVelocity
@@ -153,7 +229,12 @@ local function getPredictedPosition(targetPart, targetVelocity, distance, bullet
 end
 
 local targetVelocities = {} -- Store velocity history
+
 local function getEnhancedVelocity(player)
+    if not isValidTarget(player) then
+        return Vector3.new(0, 0, 0)
+    end
+    
     local hrp = player.Character.HumanoidRootPart
     local currentVel = hrp.Velocity
     
@@ -204,6 +285,7 @@ local function getEnhancedVelocity(player)
     return currentVel
 end
 
+-- Clean up velocity data when players leave
 Players.PlayerRemoving:Connect(function(player)
     if targetVelocities[player] then
         targetVelocities[player] = nil
@@ -211,7 +293,7 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 
 local function getOptimalAimPoint(target)
-    if not target or not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") then
+    if not isValidTarget(target) then
         return nil
     end
     
