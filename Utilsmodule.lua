@@ -1,10 +1,8 @@
 local UtilsModule = {}
 
--- Services
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
--- Utility functions
 function UtilsModule.isEnemy(player)
     return player ~= LocalPlayer and player.Team ~= LocalPlayer.Team
 end
