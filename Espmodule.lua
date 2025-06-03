@@ -171,7 +171,7 @@ local function updateTextESP()
                         local health = math.floor(humanoid.Health)
                         local maxHealth = math.floor(humanoid.MaxHealth)
                         espLabels[player].health.Text = health .. "/" .. maxHealth
-                        espLabels[player].health.Position = Vector2.new(headPos.X, headPos.Y - 16) -- 20 pixels above name
+                        espLabels[player].health.Position = Vector2.new(headPos.X, headPos.Y - 15) -- 20 pixels above name
                         espLabels[player].health.Size = baseSize -- Fixed size
                         espLabels[player].health.Visible = true
                         
