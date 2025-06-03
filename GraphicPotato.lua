@@ -5,13 +5,17 @@ FastModeModule.originalSettings = {}
 FastModeModule.processedParts = {}
 FastModeModule.connections = {}
 
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+local Players = game:GetService("Players")
+
+local isClient = RunService:IsClient()
+
 local function storeOriginalSettings()
     pcall(function()
-        local renderSettings = settings():GetService("RenderSettings")
-        local lighting = game:GetService("Lighting")
+        local lighting = Lighting
         
         FastModeModule.originalSettings = {
-            QualityLevel = renderSettings.QualityLevel,
             GlobalShadows = lighting.GlobalShadows,
             FogEnd = lighting.FogEnd,
             FogStart = lighting.FogStart,
@@ -19,8 +23,17 @@ local function storeOriginalSettings()
             EnvironmentDiffuseScale = lighting.EnvironmentDiffuseScale,
             EnvironmentSpecularScale = lighting.EnvironmentSpecularScale,
             ShadowSoftness = lighting.ShadowSoftness,
-            Technology = lighting.Technology
+            Technology = lighting.Technology,
+            Ambient = lighting.Ambient,
+            OutdoorAmbient = lighting.OutdoorAmbient
         }
+        
+        if isClient then
+            pcall(function()
+                local renderSettings = settings():GetService("RenderSettings")
+                FastModeModule.originalSettings.QualityLevel = renderSettings.QualityLevel
+            end)
+        end
     end)
 end
 
@@ -33,8 +46,8 @@ local function optimizePart(part)
         FastModeModule.processedParts[part] = {
             originalMaterial = part.Material,
             originalReflectance = part.Reflectance,
-            originalTransparency = part.Transparency,
-            originalCastShadow = part.CastShadow
+            originalCastShadow = part.CastShadow,
+            originalCanCollide = part.CanCollide
         }
         
         if part.Material ~= Enum.Material.Air then
@@ -46,9 +59,7 @@ local function optimizePart(part)
         for _, child in pairs(part:GetChildren()) do
             pcall(function()
                 if child:IsA("Decal") or child:IsA("Texture") then
-                    child.Transparency = 0.95
-                    child.StudsPerTileU = math.max(child.StudsPerTileU * 2, 4)
-                    child.StudsPerTileV = math.max(child.StudsPerTileV * 2, 4)
+                    child.Transparency = 0.9
                 elseif child:IsA("SurfaceGui") then
                     child.Enabled = false
                 elseif child:IsA("ParticleEmitter") then
@@ -56,9 +67,11 @@ local function optimizePart(part)
                 elseif child:IsA("Fire") or child:IsA("Smoke") then
                     child.Enabled = false
                 elseif child:IsA("PointLight") or child:IsA("SpotLight") or child:IsA("SurfaceLight") then
-                    child.Enabled = false
+                    child.Brightness = child.Brightness * 0.3
                 elseif child:IsA("Beam") or child:IsA("Trail") then
                     child.Enabled = false
+                elseif child:IsA("Explosion") then
+                    child.Visible = false
                 end
             end)
         end
@@ -74,15 +87,12 @@ local function restorePart(part)
         local original = FastModeModule.processedParts[part]
         part.Material = original.originalMaterial
         part.Reflectance = original.originalReflectance
-        part.Transparency = original.originalTransparency
         part.CastShadow = original.originalCastShadow
         
         for _, child in pairs(part:GetChildren()) do
             pcall(function()
                 if child:IsA("Decal") or child:IsA("Texture") then
                     child.Transparency = 0
-                    child.StudsPerTileU = child.StudsPerTileU / 2
-                    child.StudsPerTileV = child.StudsPerTileV / 2
                 elseif child:IsA("SurfaceGui") then
                     child.Enabled = true
                 elseif child:IsA("ParticleEmitter") then
@@ -90,9 +100,11 @@ local function restorePart(part)
                 elseif child:IsA("Fire") or child:IsA("Smoke") then
                     child.Enabled = true
                 elseif child:IsA("PointLight") or child:IsA("SpotLight") or child:IsA("SurfaceLight") then
-                    child.Enabled = true
+                    child.Brightness = child.Brightness / 0.3
                 elseif child:IsA("Beam") or child:IsA("Trail") then
                     child.Enabled = true
+                elseif child:IsA("Explosion") then
+                    child.Visible = true
                 end
             end)
         end
@@ -106,12 +118,12 @@ local function optimizeWorkspace(parent)
         for _, obj in pairs(parent:GetDescendants()) do
             if obj:IsA("BasePart") then
                 optimizePart(obj)
-            elseif obj:IsA("Explosion") then
-                obj.Visible = false
             elseif obj:IsA("Sound") then
-                obj.Volume = math.max(obj.Volume * 0.3, 0.1)
+                obj.Volume = math.max(obj.Volume * 0.4, 0.05)
             elseif obj:IsA("ParticleEmitter") or obj:IsA("Fire") or obj:IsA("Smoke") then
                 obj.Enabled = false
+            elseif obj:IsA("Explosion") then
+                obj.Visible = false
             end
         end
     end)
@@ -125,45 +137,48 @@ function FastModeModule.enable()
         
         storeOriginalSettings()
         
-        local renderSettings = settings():GetService("RenderSettings")
-        local lighting = game:GetService("Lighting")
+        local lighting = Lighting
         
-        renderSettings.QualityLevel = Enum.QualityLevel.Level01
+        if isClient then
+            pcall(function()
+                local renderSettings = settings():GetService("RenderSettings")
+                renderSettings.QualityLevel = Enum.QualityLevel.Level01
+            end)
+        end
         
         lighting.GlobalShadows = false
-        lighting.FogEnd = 50
-        lighting.FogStart = 0
-        lighting.Brightness = 0.8
-        lighting.EnvironmentDiffuseScale = 0.1
+        lighting.FogEnd = 100
+        lighting.FogStart = 50
+        lighting.Brightness = 1.2
+        lighting.EnvironmentDiffuseScale = 0.2
         lighting.EnvironmentSpecularScale = 0.1
         lighting.ShadowSoftness = 0
+        lighting.Ambient = Color3.fromRGB(100, 100, 100)
+        lighting.OutdoorAmbient = Color3.fromRGB(120, 120, 120)
         
-        if lighting.Technology ~= Enum.Technology.Compatibility then
+        pcall(function()
             lighting.Technology = Enum.Technology.Compatibility
-        end
+        end)
         
         optimizeWorkspace(workspace)
         
         FastModeModule.connections.descendantAdded = workspace.DescendantAdded:Connect(function(obj)
-            if obj:IsA("BasePart") then
-                wait(0.05) -- Small delay for object initialization
-                optimizePart(obj)
-            elseif obj:IsA("ParticleEmitter") or obj:IsA("Fire") or obj:IsA("Smoke") then
-                obj.Enabled = false
-            elseif obj:IsA("Sound") then
-                obj.Volume = math.max(obj.Volume * 0.3, 0.1)
-            end
-        end)
-        
-        FastModeModule.connections.childAdded = workspace.ChildAdded:Connect(function(child)
-            if child:IsA("Model") or child:IsA("Folder") then
-                wait(0.1)
-                optimizeWorkspace(child)
-            end
+            pcall(function()
+                if obj:IsA("BasePart") then
+                    task.wait(0.1) -- Use task.wait instead of wait
+                    optimizePart(obj)
+                elseif obj:IsA("ParticleEmitter") or obj:IsA("Fire") or obj:IsA("Smoke") then
+                    obj.Enabled = false
+                elseif obj:IsA("Sound") then
+                    obj.Volume = math.max(obj.Volume * 0.4, 0.05)
+                elseif obj:IsA("Explosion") then
+                    obj.Visible = false
+                end
+            end)
         end)
         
         FastModeModule.enabled = true
-        warn("[Fast Mode] ENABLED - Performance optimized for mobile")
+        print("[Fast Mode] ENABLED - Performance optimized for mobile")
     end)
 end
 
@@ -174,17 +189,24 @@ function FastModeModule.disable()
         end
         
         for _, connection in pairs(FastModeModule.connections) do
-            if connection then
-                connection:Disconnect()
-            end
+            pcall(function()
+                if connection then
+                    connection:Disconnect()
+                end
+            end)
         end
         FastModeModule.connections = {}
         
         if FastModeModule.originalSettings and next(FastModeModule.originalSettings) then
-            local renderSettings = settings():GetService("RenderSettings")
-            local lighting = game:GetService("Lighting")
+            local lighting = Lighting
             
-            renderSettings.QualityLevel = FastModeModule.originalSettings.QualityLevel
+            if isClient and FastModeModule.originalSettings.QualityLevel then
+                pcall(function()
+                    local renderSettings = settings():GetService("RenderSettings")
+                    renderSettings.QualityLevel = FastModeModule.originalSettings.QualityLevel
+                end)
+            end
+            
             lighting.GlobalShadows = FastModeModule.originalSettings.GlobalShadows
             lighting.FogEnd = FastModeModule.originalSettings.FogEnd
             lighting.FogStart = FastModeModule.originalSettings.FogStart
@@ -193,6 +215,8 @@ function FastModeModule.disable()
             lighting.EnvironmentSpecularScale = FastModeModule.originalSettings.EnvironmentSpecularScale
             lighting.ShadowSoftness = FastModeModule.originalSettings.ShadowSoftness
             lighting.Technology = FastModeModule.originalSettings.Technology
+            lighting.Ambient = FastModeModule.originalSettings.Ambient
+            lighting.OutdoorAmbient = FastModeModule.originalSettings.OutdoorAmbient
         end
         
         for part, _ in pairs(FastModeModule.processedParts) do
@@ -202,16 +226,18 @@ function FastModeModule.disable()
         FastModeModule.processedParts = {}
         
         FastModeModule.enabled = false
-        warn("[Fast Mode] DISABLED - Graphics restored to original")
+        print("[Fast Mode] DISABLED - Graphics restored to original")
     end)
 end
 
 function FastModeModule.toggle(state)
-    if state then
-        FastModeModule.enable()
-    else
-        FastModeModule.disable()
-    end
+    pcall(function()
+        if state then
+            FastModeModule.enable()
+        else
+            FastModeModule.disable()
+        end
+    end)
 end
 
 function FastModeModule.isEnabled()
@@ -224,8 +250,10 @@ function FastModeModule.cleanup()
     end)
 end
 
-game:BindToClose(function()
-    FastModeModule.cleanup()
-end)
+if not isClient then
+    game:BindToClose(function()
+        FastModeModule.cleanup()
+    end)
+end
 
 return FastModeModule
