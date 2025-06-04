@@ -14,8 +14,10 @@ function KeySystemUI.createUI(callbacks, config)
     screenGui.ResetOnSpawn = false
     screenGui.DisplayOrder = 10
 
-    -- Mobile-friendly dimensions
-    local isSmallScreen = playerGui.AbsoluteSize.X <= 768
+    -- Fixed mobile-friendly dimensions detection
+    local camera = workspace.CurrentCamera
+    local viewportSize = camera.ViewportSize
+    local isSmallScreen = viewportSize.X <= 768
     local frameWidth = isSmallScreen and 280 or 320
     local frameHeight = isSmallScreen and 320 or 360
 
