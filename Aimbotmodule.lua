@@ -162,13 +162,13 @@ local function getClosestEnemyFOV()
     return closest
 end
 
--- Updated weapon bullet speeds with more accurate values
+-- More realistic bullet speeds for WW1 weapons (reduced from previous values)
 local WeaponBulletSpeeds = {
-    ["Lewis Gun"] = 2800, ["Madsen 1905"] = 2900, ["CSRG 1915"] = 2950,
-    ["Doppelpistole 1912"] = 1800, ["Gewehr 98"] = 3200, ["Beholla 1915"] = 1600,
-    ["Farquhar Hill P08"] = 2800, ["Karabiner 98AZ"] = 3100, ["Mannlicher 1895"] = 3200,
-    ["MG 15na"] = 2725, ["MP18,-I"] = 1900, ["Selbstlader 1906"] = 3100,
-    ["RSC 1917"] = 3100, ["Ribeyrolles 1918"] = 1900,
+    ["Lewis Gun"] = 2200, ["Madsen 1905"] = 2300, ["CSRG 1915"] = 2350,
+    ["Doppelpistole 1912"] = 1200, ["Gewehr 98"] = 2600, ["Beholla 1915"] = 1000,
+    ["Farquhar Hill P08"] = 2200, ["Karabiner 98AZ"] = 2500, ["Mannlicher 1895"] = 2600,
+    ["MG 15na"] = 2125, ["MP18,-I"] = 1300, ["Selbstlader 1906"] = 2500,
+    ["RSC 1917"] = 2500, ["Ribeyrolles 1918"] = 1300,
 }
 
 local function getCurrentBulletSpeed()
@@ -181,44 +181,39 @@ local function getCurrentBulletSpeed()
             end
             local weaponName = string.lower(tool.Name)
             if string.find(weaponName, "rifle") or string.find(weaponName, "gewehr") or string.find(weaponName, "karabiner") then
-                return 3000 -- High velocity rifles
+                return 2400 -- High velocity rifles
             elseif string.find(weaponName, "pistol") or string.find(weaponName, "beholla") then
-                return 1700 -- Pistols
+                return 1100 -- Pistols
             elseif string.find(weaponName, "mg") or string.find(weaponName, "gun") then
-                return 2700 -- Machine guns
+                return 2100 -- Machine guns
             elseif string.find(weaponName, "mp") then
-                return 1900 -- Submachine guns
+                return 1300 -- Submachine guns
             end
         end
     end
-    return 2500 -- Default fallback
+    return 2000 -- Default fallback (reduced)
 end
 
--- Improved bullet drop calculation with proper physics
-local function calculateBulletDrop(distance, bulletSpeed, angle)
-    local gravity = 196.2 -- Roblox gravity
+-- Simplified bullet drop calculation - many games don't simulate realistic bullet drop
+local function calculateBulletDrop(distance, bulletSpeed)
+    -- Most arcade-style WW1 games have minimal or no bullet drop
+    -- Only apply very slight drop for extreme distances
     local timeToTarget = distance / bulletSpeed
     
-    -- Calculate horizontal and vertical components
-    local horizontalDistance = distance * math.cos(angle or 0)
-    local verticalDistance = distance * math.sin(angle or 0)
+    if distance > 500 then
+        -- Very minimal drop only for extreme range
+        local minimalDrop = (distance - 500) / 200 -- 1 stud drop per 200 studs past 500
+        return math.min(minimalDrop, 3) -- Cap at 3 studs maximum
+    end
     
-    -- Calculate bullet drop using proper ballistic formula
-    local drop = (gravity * timeToTarget * timeToTarget) / 2
-    
-    -- Adjust for air resistance (simplified model)
-    local airResistanceFactor = 1 + (distance / 1000) * 0.1
-    drop = drop * airResistanceFactor
-    
-    return drop
+    return 0 -- No bullet drop for most ranges
 end
 
--- Enhanced prediction with better physics
+-- Simplified prediction focused on movement, not bullet drop
 local function getPredictedPosition(targetPart, targetVelocity, distance, bulletSpeed)
-    local camPos = Camera.CFrame.Position
     local targetPos = targetPart.Position
     
-    -- Calculate initial time to hit
+    -- Calculate time to hit target
     local timeToHit = distance / bulletSpeed
     
     -- Get current velocity safely
@@ -227,34 +222,27 @@ local function getPredictedPosition(targetPart, targetVelocity, distance, bullet
         currentVel = targetPart.Parent.HumanoidRootPart.Velocity
     end
     
-    -- Use enhanced velocity if available, otherwise use current velocity
+    -- Use the better velocity prediction
     local predictionVel = targetVelocity.Magnitude > 0 and targetVelocity or currentVel
     
-    -- Predict future position
+    -- Predict future position based on movement only
     local predictedPos = targetPos + (predictionVel * timeToHit)
     
-    -- Calculate angle to target for bullet drop calculation
-    local direction = (predictedPos - camPos)
-    local horizontalDistance = Vector3.new(direction.X, 0, direction.Z).Magnitude
-    local angle = math.atan2(-direction.Y, horizontalDistance)
+    -- Apply minimal bullet drop only for extreme distances
+    local bulletDrop = calculateBulletDrop(distance, bulletSpeed)
+    if bulletDrop > 0 then
+        predictedPos = predictedPos - Vector3.new(0, bulletDrop, 0) -- SUBTRACT for drop
+    end
     
-    -- Calculate bullet drop
-    local bulletDrop = calculateBulletDrop(distance, bulletSpeed, angle)
+    -- Simple refinement iteration
+    local newDistance = (Camera.CFrame.Position - predictedPos).Magnitude
+    local newTimeToHit = newDistance / bulletSpeed
+    predictedPos = targetPos + (predictionVel * newTimeToHit)
     
-    -- Apply bullet drop compensation
-    predictedPos = predictedPos + Vector3.new(0, bulletDrop, 0)
-    
-    -- Iterative refinement for better accuracy (especially at long range)
-    for i = 1, 3 do
-        local newDirection = (predictedPos - camPos)
-        local newDistance = newDirection.Magnitude
-        local newTimeToHit = newDistance / bulletSpeed
-        local newAngle = math.atan2(-newDirection.Y, Vector3.new(newDirection.X, 0, newDirection.Z).Magnitude)
-        
-        -- Recalculate with refined values
-        predictedPos = targetPos + (predictionVel * newTimeToHit)
-        local refinedDrop = calculateBulletDrop(newDistance, bulletSpeed, newAngle)
-        predictedPos = predictedPos + Vector3.new(0, refinedDrop, 0)
+    -- Reapply minimal drop
+    local finalDrop = calculateBulletDrop(newDistance, bulletSpeed)
+    if finalDrop > 0 then
+        predictedPos = predictedPos - Vector3.new(0, finalDrop, 0)
     end
     
     return predictedPos
@@ -330,7 +318,7 @@ Players.PlayerRemoving:Connect(function(player)
     end
 end)
 
--- Improved aim point calculation with distance-based targeting
+-- Simplified aim point calculation focused on direct hits
 local function getOptimalAimPoint(target)
     if not isValidTarget(target) then
         return nil
@@ -338,41 +326,39 @@ local function getOptimalAimPoint(target)
     
     local hrp = target.Character.HumanoidRootPart
     local head = target.Character:FindFirstChild("Head")
-    local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
     
     local velocity = getEnhancedVelocity(target)
     local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
     local bulletSpeed = getCurrentBulletSpeed()
     
-    -- Choose target point based on distance and weapon type
-    local targetPart = hrp -- Default to body
+    -- Choose target point based on distance
+    local targetPart = hrp -- Default to body center
     local aimOffset = Vector3.new(0, 0, 0)
     
     if head then
-        if distance < 100 then
+        if distance < 150 then
             -- Close range: aim for head
             targetPart = head
-            aimOffset = Vector3.new(0, 0.2, 0) -- Slight upward offset
-        elseif distance < 300 then
-            -- Medium range: aim for upper torso/neck area
+        elseif distance < 350 then
+            -- Medium range: aim for upper chest/neck
             targetPart = hrp
-            aimOffset = Vector3.new(0, 1.2, 0) -- Chest/neck level
+            aimOffset = Vector3.new(0, 1.0, 0) -- Chest level
         else
-            -- Long range: aim for center mass with slight upward bias
+            -- Long range: aim for center mass
             targetPart = hrp
-            aimOffset = Vector3.new(0, 0.8, 0) -- Upper torso
+            aimOffset = Vector3.new(0, 0.5, 0) -- Slightly above center
         end
     end
     
-    -- Get predicted position
+    -- Get predicted position (now without excessive bullet drop)
     local predictedPos = getPredictedPosition(targetPart, velocity, distance, bulletSpeed)
     
     -- Apply aim offset
     predictedPos = predictedPos + aimOffset
     
-    -- Additional compensation for moving targets at long range
-    if distance > 400 and velocity.Magnitude > 5 then
-        local extraLead = velocity.Unit * (distance / bulletSpeed) * 0.3
+    -- For very long range moving targets, add slight extra lead
+    if distance > 450 and velocity.Magnitude > 8 then
+        local extraLead = velocity.Unit * (distance / bulletSpeed) * 0.15
         predictedPos = predictedPos + extraLead
     end
     
