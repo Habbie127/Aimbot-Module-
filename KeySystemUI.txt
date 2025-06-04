@@ -9,482 +9,181 @@ local KeySystemUI = {}
 
 function KeySystemUI.createUI(callbacks, config)
     local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "DreamPortalUI"
+    screenGui.Name = "KeySystemUI"
     screenGui.Parent = playerGui
     screenGui.ResetOnSpawn = false
-    screenGui.DisplayOrder = 10
 
-    -- Fixed mobile-friendly dimensions detection
-    local camera = workspace.CurrentCamera
-    local viewportSize = camera.ViewportSize
-    local isSmallScreen = viewportSize.X <= 768
-    local frameWidth = isSmallScreen and 280 or 320
-    local frameHeight = isSmallScreen and 320 or 360
-
+    -- Main Frame
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, frameWidth, 0, frameHeight)
-    mainFrame.Position = UDim2.new(0.5, -frameWidth/2, 0.5, -frameHeight/2)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(102, 126, 234)
+    mainFrame.Size = UDim2.new(0, 300, 0, 200)
+    mainFrame.Position = UDim2.new(0.5, -150, 0.5, -100)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     mainFrame.BorderSizePixel = 0
     mainFrame.Active = true
     mainFrame.Draggable = true
     mainFrame.Parent = screenGui
 
     local mainCorner = Instance.new("UICorner")
-    mainCorner.CornerRadius = UDim.new(0, 18)
+    mainCorner.CornerRadius = UDim.new(0, 8)
     mainCorner.Parent = mainFrame
 
-    -- Glass-like background effect
-    local glassBg = Instance.new("Frame")
-    glassBg.Name = "GlassBackground"
-    glassBg.Size = UDim2.new(1, 0, 1, 0)
-    glassBg.Position = UDim2.new(0, 0, 0, 0)
-    glassBg.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    glassBg.BackgroundTransparency = 0.85
-    glassBg.BorderSizePixel = 0
-    glassBg.Parent = mainFrame
-
-    local glassCorner = Instance.new("UICorner")
-    glassCorner.CornerRadius = UDim.new(0, 18)
-    glassCorner.Parent = glassBg
-
-    -- Animated gradient background
-    local gradientFrame = Instance.new("Frame")
-    gradientFrame.Name = "GradientFrame"
-    gradientFrame.Size = UDim2.new(1, 0, 1, 0)
-    gradientFrame.Position = UDim2.new(0, 0, 0, 0)
-    gradientFrame.BackgroundColor3 = Color3.fromRGB(118, 75, 162)
-    gradientFrame.BorderSizePixel = 0
-    gradientFrame.ZIndex = -1
-    gradientFrame.Parent = mainFrame
-
-    local gradientCorner = Instance.new("UICorner")
-    gradientCorner.CornerRadius = UDim.new(0, 18)
-    gradientCorner.Parent = gradientFrame
-
-    -- Dream-like color animation
-    local function createDreamAnimation()
-        local colors = {
-            Color3.fromRGB(102, 126, 234), -- Blue
-            Color3.fromRGB(240, 147, 251), -- Pink
-            Color3.fromRGB(79, 172, 254),  -- Light Blue
-            Color3.fromRGB(168, 237, 234), -- Mint
-            Color3.fromRGB(118, 75, 162)   -- Purple
-        }
-
-        local function animateColor()
-            local randomColor = colors[math.random(1, #colors)]
-            local tween = TweenService:Create(
-                gradientFrame,
-                TweenInfo.new(4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
-                {BackgroundColor3 = randomColor}
-            )
-            tween:Play()
-            tween.Completed:Connect(function()
-                task.wait(1)
-                animateColor()
-            end)
-        end
-        animateColor()
-    end
-
-    spawn(createDreamAnimation)
-
-    -- Header
-    local header = Instance.new("Frame")
-    header.Name = "Header"
-    header.Size = UDim2.new(1, 0, 0, 45)
-    header.Position = UDim2.new(0, 0, 0, 0)
-    header.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    header.BackgroundTransparency = 0.8
-    header.BorderSizePixel = 0
-    header.Parent = mainFrame
-
-    local headerCorner = Instance.new("UICorner")
-    headerCorner.CornerRadius = UDim.new(0, 18)
-    headerCorner.Parent = header
-
-    local headerMask = Instance.new("Frame")
-    headerMask.Size = UDim2.new(1, 0, 0, 18)
-    headerMask.Position = UDim2.new(0, 0, 1, -18)
-    headerMask.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    headerMask.BackgroundTransparency = 0.8
-    headerMask.BorderSizePixel = 0
-    headerMask.Parent = header
-
+    -- Title
     local title = Instance.new("TextLabel")
     title.Name = "Title"
-    title.Size = UDim2.new(1, -40, 1, 0)
-    title.Position = UDim2.new(0, 10, 0, 0)
+    title.Size = UDim2.new(1, -40, 0, 30)
+    title.Position = UDim2.new(0, 10, 0, 5)
     title.BackgroundTransparency = 1
-    title.Text = "🌈 Dream Portal"
+    title.Text = "Key System"
     title.TextColor3 = Color3.fromRGB(255, 255, 255)
     title.TextScaled = true
     title.Font = Enum.Font.SourceSansBold
-    title.TextStrokeTransparency = 0.5
-    title.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    title.Parent = header
+    title.Parent = mainFrame
 
+    -- Close Button
     local closeButton = Instance.new("TextButton")
     closeButton.Name = "CloseButton"
     closeButton.Size = UDim2.new(0, 25, 0, 25)
-    closeButton.Position = UDim2.new(1, -32, 0, 6)
-    closeButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    closeButton.BackgroundTransparency = 0.2
-    closeButton.Text = "✕"
+    closeButton.Position = UDim2.new(1, -30, 0, 5)
+    closeButton.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+    closeButton.Text = "X"
     closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
     closeButton.TextScaled = true
     closeButton.Font = Enum.Font.SourceSansBold
     closeButton.BorderSizePixel = 0
-    closeButton.Parent = header
+    closeButton.Parent = mainFrame
 
     local closeCorner = Instance.new("UICorner")
-    closeCorner.CornerRadius = UDim.new(0, 12)
+    closeCorner.CornerRadius = UDim.new(0, 4)
     closeCorner.Parent = closeButton
-
-    -- Content Frame
-    local contentFrame = Instance.new("Frame")
-    contentFrame.Name = "ContentFrame"
-    contentFrame.Size = UDim2.new(1, -20, 1, -55)
-    contentFrame.Position = UDim2.new(0, 10, 0, 50)
-    contentFrame.BackgroundTransparency = 1
-    contentFrame.Parent = mainFrame
-
-    -- Status Icon
-    local statusIcon = Instance.new("TextLabel")
-    statusIcon.Name = "StatusIcon"
-    statusIcon.Size = UDim2.new(0, 40, 0, 40)
-    statusIcon.Position = UDim2.new(0.5, -20, 0, 0)
-    statusIcon.BackgroundTransparency = 1
-    statusIcon.Text = "🌟"
-    statusIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
-    statusIcon.TextScaled = true
-    statusIcon.Font = Enum.Font.SourceSansBold
-    statusIcon.Parent = contentFrame
-
-    -- Bounce animation for status icon
-    local function animateStatusIcon()
-        local bounce = TweenService:Create(
-            statusIcon,
-            TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-            {Rotation = 10}
-        )
-        bounce:Play()
-    end
-    spawn(animateStatusIcon)
-
-    -- Status Label
-    local statusLabel = Instance.new("TextLabel")
-    statusLabel.Name = "StatusLabel"
-    statusLabel.Size = UDim2.new(1, 0, 0, 20)
-    statusLabel.Position = UDim2.new(0, 0, 0, 45)
-    statusLabel.BackgroundTransparency = 1
-    statusLabel.Text = "✨ Enter your ethereal key ✨"
-    statusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    statusLabel.TextScaled = true
-    statusLabel.Font = Enum.Font.SourceSans
-    statusLabel.TextStrokeTransparency = 0.5
-    statusLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    statusLabel.Parent = contentFrame
-
-    -- Key Input Container
-    local keyContainer = Instance.new("Frame")
-    keyContainer.Name = "KeyContainer"
-    keyContainer.Size = UDim2.new(1, 0, 0, 50)
-    keyContainer.Position = UDim2.new(0, 0, 0, 70)
-    keyContainer.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    keyContainer.BackgroundTransparency = 0.4
-    keyContainer.BorderSizePixel = 0
-    keyContainer.Parent = contentFrame
-
-    local keyContainerCorner = Instance.new("UICorner")
-    keyContainerCorner.CornerRadius = UDim.new(0, 12)
-    keyContainerCorner.Parent = keyContainer
 
     -- Key Input
     local keyInput = Instance.new("TextBox")
     keyInput.Name = "KeyInput"
-    keyInput.Size = UDim2.new(1, -16, 0, 30)
-    keyInput.Position = UDim2.new(0, 8, 0, 10)
-    keyInput.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    keyInput.BackgroundTransparency = 0.15
+    keyInput.Size = UDim2.new(1, -20, 0, 30)
+    keyInput.Position = UDim2.new(0, 10, 0, 50)
+    keyInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
     keyInput.Text = ""
-    keyInput.PlaceholderText = "XXXX-XXXX-XXXX"
-    keyInput.TextColor3 = Color3.fromRGB(0, 255, 136)
-    keyInput.PlaceholderColor3 = Color3.fromRGB(200, 200, 200)
+    keyInput.PlaceholderText = "Enter Key"
+    keyInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+    keyInput.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
     keyInput.TextScaled = true
-    keyInput.Font = Enum.Font.SourceSansBold
+    keyInput.Font = Enum.Font.SourceSans
     keyInput.BorderSizePixel = 0
-    keyInput.Parent = keyContainer
+    keyInput.Parent = mainFrame
 
-    local keyInputCorner = Instance.new("UICorner")
-    keyInputCorner.CornerRadius = UDim.new(0, 8)
-    keyInputCorner.Parent = keyInput
+    local keyCorner = Instance.new("UICorner")
+    keyCorner.CornerRadius = UDim.new(0, 4)
+    keyCorner.Parent = keyInput
 
     -- Get Key Button
     local getKeyButton = Instance.new("TextButton")
     getKeyButton.Name = "GetKeyButton"
-    getKeyButton.Size = UDim2.new(1, 0, 0, 30)
-    getKeyButton.Position = UDim2.new(0, 0, 0, 130)
-    getKeyButton.BackgroundColor3 = Color3.fromRGB(255, 107, 107)
-    getKeyButton.BackgroundTransparency = 0.1
-    getKeyButton.Text = "🔗 Get Access Key"
+    getKeyButton.Size = UDim2.new(1, -20, 0, 30)
+    getKeyButton.Position = UDim2.new(0, 10, 0, 90)
+    getKeyButton.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
+    getKeyButton.Text = "Get Key"
     getKeyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
     getKeyButton.TextScaled = true
     getKeyButton.Font = Enum.Font.SourceSansBold
     getKeyButton.BorderSizePixel = 0
-    getKeyButton.Parent = contentFrame
+    getKeyButton.Parent = mainFrame
 
     local getKeyCorner = Instance.new("UICorner")
-    getKeyCorner.CornerRadius = UDim.new(0, 10)
+    getKeyCorner.CornerRadius = UDim.new(0, 4)
     getKeyCorner.Parent = getKeyButton
 
     -- Submit Button
     local submitButton = Instance.new("TextButton")
     submitButton.Name = "SubmitButton"
-    submitButton.Size = UDim2.new(1, 0, 0, 30)
-    submitButton.Position = UDim2.new(0, 0, 0, 170)
-    submitButton.BackgroundColor3 = Color3.fromRGB(240, 147, 251)
-    submitButton.BackgroundTransparency = 0.1
-    submitButton.Text = "🚀 Validate & Execute"
+    submitButton.Size = UDim2.new(1, -20, 0, 30)
+    submitButton.Position = UDim2.new(0, 10, 0, 130)
+    submitButton.BackgroundColor3 = Color3.fromRGB(60, 180, 75)
+    submitButton.Text = "Submit"
     submitButton.TextColor3 = Color3.fromRGB(255, 255, 255)
     submitButton.TextScaled = true
     submitButton.Font = Enum.Font.SourceSansBold
     submitButton.BorderSizePixel = 0
-    submitButton.Parent = contentFrame
+    submitButton.Parent = mainFrame
 
     local submitCorner = Instance.new("UICorner")
-    submitCorner.CornerRadius = UDim.new(0, 10)
+    submitCorner.CornerRadius = UDim.new(0, 4)
     submitCorner.Parent = submitButton
 
-    -- Mobile Guide
-    local guideFrame = Instance.new("Frame")
-    guideFrame.Name = "GuideFrame"
-    guideFrame.Size = UDim2.new(1, 0, 0, 55)
-    guideFrame.Position = UDim2.new(0, 0, 0, 210)
-    guideFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    guideFrame.BackgroundTransparency = 0.9
-    guideFrame.BorderSizePixel = 0
-    guideFrame.Parent = contentFrame
-
-    local guideCorner = Instance.new("UICorner")
-    guideCorner.CornerRadius = UDim.new(0, 10)
-    guideCorner.Parent = guideFrame
-
-    local guideText = Instance.new("TextLabel")
-    guideText.Name = "GuideText"
-    guideText.Size = UDim2.new(1, -12, 1, -12)
-    guideText.Position = UDim2.new(0, 6, 0, 6)
-    guideText.BackgroundTransparency = 1
-    guideText.Text = "📱 Mobile Guide:\n1. Get Key → Complete task → Copy key\n2. Paste here → Validate → Enjoy! ✨\n⏰ Keys expire in 24 hours"
-    guideText.TextColor3 = Color3.fromRGB(255, 255, 255)
-    guideText.TextScaled = true
-    guideText.Font = Enum.Font.SourceSans
-    guideText.TextWrapped = true
-    guideText.TextStrokeTransparency = 0.6
-    guideText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    guideText.Parent = guideFrame
-
-    -- Loading overlay
-    local loadingFrame = Instance.new("Frame")
-    loadingFrame.Name = "LoadingFrame"
-    loadingFrame.Size = UDim2.new(1, 0, 1, 0)
-    loadingFrame.Position = UDim2.new(0, 0, 0, 0)
-    loadingFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    loadingFrame.BackgroundTransparency = 0.4
-    loadingFrame.BorderSizePixel = 0
-    loadingFrame.Visible = false
-    loadingFrame.Parent = mainFrame
-
-    local loadingCorner = Instance.new("UICorner")
-    loadingCorner.CornerRadius = UDim.new(0, 18)
-    loadingCorner.Parent = loadingFrame
-
-    local loadingText = Instance.new("TextLabel")
-    loadingText.Name = "LoadingText"
-    loadingText.Size = UDim2.new(0, 160, 0, 30)
-    loadingText.Position = UDim2.new(0.5, -80, 0.5, -15)
-    loadingText.BackgroundTransparency = 1
-    loadingText.Text = "🔄 Processing..."
-    loadingText.TextColor3 = Color3.fromRGB(255, 255, 255)
-    loadingText.TextScaled = true
-    loadingText.Font = Enum.Font.SourceSansBold
-    loadingText.TextStrokeTransparency = 0.5
-    loadingText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    loadingText.Parent = loadingFrame
+    -- Status Label
+    local statusLabel = Instance.new("TextLabel")
+    statusLabel.Name = "StatusLabel"
+    statusLabel.Size = UDim2.new(1, -20, 0, 20)
+    statusLabel.Position = UDim2.new(0, 10, 0, 170)
+    statusLabel.BackgroundTransparency = 1
+    statusLabel.Text = "Enter your key"
+    statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    statusLabel.TextScaled = true
+    statusLabel.Font = Enum.Font.SourceSans
+    statusLabel.Parent = mainFrame
 
     return {
         screenGui = screenGui,
         mainFrame = mainFrame,
         statusLabel = statusLabel,
-        statusIcon = statusIcon,
         keyInput = keyInput,
         getKeyButton = getKeyButton,
         submitButton = submitButton,
-        closeButton = closeButton,
-        loadingFrame = loadingFrame,
-        loadingText = loadingText
+        closeButton = closeButton
     }
-end
-
-function KeySystemUI.addButtonEffects(button)
-    local originalSize = button.Size
-    local originalTransparency = button.BackgroundTransparency
-
-    button.MouseEnter:Connect(function()
-        TweenService:Create(button, TweenInfo.new(0.2), {
-            BackgroundTransparency = originalTransparency - 0.05,
-            Size = originalSize + UDim2.new(0, 0, 0, 2)
-        }):Play()
-    end)
-
-    button.MouseLeave:Connect(function()
-        TweenService:Create(button, TweenInfo.new(0.2), {
-            BackgroundTransparency = originalTransparency,
-            Size = originalSize
-        }):Play()
-    end)
-
-    button.MouseButton1Down:Connect(function()
-        TweenService:Create(button, TweenInfo.new(0.1), {
-            Size = originalSize - UDim2.new(0, 0, 0, 2)
-        }):Play()
-    end)
-
-    button.MouseButton1Up:Connect(function()
-        TweenService:Create(button, TweenInfo.new(0.1), {
-            Size = originalSize
-        }):Play()
-    end)
-end
-
-function KeySystemUI.formatKeyInput(keyInput)
-    keyInput:GetPropertyChangedSignal("Text"):Connect(function()
-        local text = keyInput.Text:upper():gsub("[^%w]", "")
-        if #text > 12 then
-            text = text:sub(1, 12)
-        end
-        
-        local formatted = ""
-        for i = 1, #text do
-            if i == 5 or i == 9 then
-                formatted = formatted .. "-"
-            end
-            formatted = formatted .. text:sub(i, i)
-        end
-        
-        if formatted ~= keyInput.Text then
-            keyInput.Text = formatted
-        end
-    end)
-end
-
-function KeySystemUI.showNotification(statusLabel, message, color, icon)
-    statusLabel.Text = message
-    statusLabel.TextColor3 = color
-    
-    if icon then
-        statusLabel.Parent.StatusIcon.Text = icon
-    end
-    
-    local tween = TweenService:Create(
-        statusLabel,
-        TweenInfo.new(0.4, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out),
-        {TextTransparency = 0}
-    )
-    tween:Play()
-end
-
-function KeySystemUI.createEntranceAnimation(mainFrame)
-    mainFrame.Position = UDim2.new(0.5, -160, -1, 0)
-    local entranceTween = TweenService:Create(
-        mainFrame,
-        TweenInfo.new(0.8, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-        {Position = UDim2.new(0.5, -160, 0.5, -180)}
-    )
-    entranceTween:Play()
 end
 
 function KeySystemUI.init(callbacks)
     local ui = KeySystemUI.createUI(callbacks, callbacks.config)
     
-    -- Add effects
-    KeySystemUI.addButtonEffects(ui.getKeyButton)
-    KeySystemUI.addButtonEffects(ui.submitButton)
-    KeySystemUI.addButtonEffects(ui.closeButton)
-    KeySystemUI.formatKeyInput(ui.keyInput)
-    KeySystemUI.createEntranceAnimation(ui.mainFrame)
-    
-    -- Event handlers
+    -- Close button
     ui.closeButton.MouseButton1Click:Connect(function()
-        local exitTween = TweenService:Create(
-            ui.mainFrame,
-            TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.In),
-            {Position = UDim2.new(0.5, -160, 1.5, 0)}
-        )
-        exitTween:Play()
-        exitTween.Completed:Connect(function()
-            ui.screenGui:Destroy()
-        end)
+        ui.screenGui:Destroy()
     end)
 
+    -- Get key button
     ui.getKeyButton.MouseButton1Click:Connect(function()
         local success, url = callbacks.openKeyLink()
-        
         if success then
-            KeySystemUI.showNotification(ui.statusLabel, "🔗 Link opened! Complete task to get key.", Color3.fromRGB(240, 147, 251), "🔗")
+            ui.statusLabel.Text = "Link copied to clipboard"
+            ui.statusLabel.TextColor3 = Color3.fromRGB(100, 200, 255)
         else
-            KeySystemUI.showNotification(ui.statusLabel, "🔗 Manual copy needed - Check console.", Color3.fromRGB(240, 147, 251), "⚠️")
+            ui.statusLabel.Text = "Check console for link"
+            ui.statusLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
             print("Link: " .. url)
         end
     end)
 
+    -- Submit button
     ui.submitButton.MouseButton1Click:Connect(function()
         local inputKey = ui.keyInput.Text
         
         if inputKey == "" then
-            KeySystemUI.showNotification(ui.statusLabel, "⚠️ Please enter a key first!", Color3.fromRGB(255, 193, 7), "⚠️")
+            ui.statusLabel.Text = "Please enter a key"
+            ui.statusLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
             return
         end
         
         local isValid = callbacks.validateKey(inputKey)
         
         if isValid then
-            KeySystemUI.showNotification(ui.statusLabel, "✅ Key validated! Executing script...", Color3.fromRGB(76, 175, 80), "✅")
-            
-            ui.loadingFrame.Visible = true
-            ui.loadingText.Text = "🚀 Loading dream script..."
-            
-            task.wait(1)
+            ui.statusLabel.Text = "Valid key! Loading script..."
+            ui.statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
             
             local success, result = callbacks.executeScript()
             
             if success then
-                KeySystemUI.showNotification(ui.statusLabel, "✨ Dream script loaded successfully!", Color3.fromRGB(76, 175, 80), "✨")
-
-                StarterGui:SetCore("SendNotification", {
-                    Title = "🌈 Dream Portal",
-                    Text = "Script loaded successfully! Welcome to the dream realm! ✨",
-                    Duration = 4
-                })
-                
-                task.wait(2)
+                ui.statusLabel.Text = "Script loaded successfully!"
+                ui.statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+                wait(2)
                 ui.screenGui:Destroy()
             else
-                KeySystemUI.showNotification(ui.statusLabel, "❌ Script failed: " .. result, Color3.fromRGB(244, 67, 54), "❌")
-                ui.loadingFrame.Visible = false
+                ui.statusLabel.Text = "Script failed to load"
+                ui.statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
             end
         else
-            KeySystemUI.showNotification(ui.statusLabel, "❌ Invalid or expired key", Color3.fromRGB(244, 67, 54), "❌")
-            
-            -- Shake animation for invalid key
-            local originalPos = ui.keyInput.Position
-            for i = 1, 4 do
-                ui.keyInput.Position = originalPos + UDim2.new(0, math.random(-2, 2), 0, 0)
-                task.wait(0.1)
-            end
-            ui.keyInput.Position = originalPos
+            ui.statusLabel.Text = "Invalid key"
+            ui.statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
         end
     end)
 
