@@ -7,7 +7,7 @@ local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
 local FOVRadius = 50
-local AimbotRange = 300
+local AimbotRange = 600 -- Increased range to match your needs
 local AimbotSmoothness = 0.1
 local useLerp = false
 
@@ -162,12 +162,13 @@ local function getClosestEnemyFOV()
     return closest
 end
 
+-- Updated weapon bullet speeds with more accurate values
 local WeaponBulletSpeeds = {
-    ["Lewis Gun"] = 3300, ["Madsen 1905"] = 3400, ["CSRG 1915"] = 3450,
-    ["Doppelpistole 1912"] = 2400, ["Gewehr 98"] = 4200, ["Beholla 1915"] = 2200,
-    ["Farquhar Hill P08"] = 3500, ["Karabiner 98AZ"] = 3600, ["Mannlicher 1895"] = 4200,
-    ["MG 15na"] = 3225, ["MP18,-I"] = 2600, ["Selbstlader 1906"] = 3600,
-    ["RSC 1917"] = 3600, ["Ribeyrolles 1918"] = 2600,
+    ["Lewis Gun"] = 2800, ["Madsen 1905"] = 2900, ["CSRG 1915"] = 2950,
+    ["Doppelpistole 1912"] = 1800, ["Gewehr 98"] = 3200, ["Beholla 1915"] = 1600,
+    ["Farquhar Hill P08"] = 2800, ["Karabiner 98AZ"] = 3100, ["Mannlicher 1895"] = 3200,
+    ["MG 15na"] = 2725, ["MP18,-I"] = 1900, ["Selbstlader 1906"] = 3100,
+    ["RSC 1917"] = 3100, ["Ribeyrolles 1918"] = 1900,
 }
 
 local function getCurrentBulletSpeed()
@@ -180,49 +181,80 @@ local function getCurrentBulletSpeed()
             end
             local weaponName = string.lower(tool.Name)
             if string.find(weaponName, "rifle") or string.find(weaponName, "gewehr") or string.find(weaponName, "karabiner") then
-                return 4000 -- High velocity rifles
+                return 3000 -- High velocity rifles
             elseif string.find(weaponName, "pistol") or string.find(weaponName, "beholla") then
-                return 2300 -- Pistols
+                return 1700 -- Pistols
             elseif string.find(weaponName, "mg") or string.find(weaponName, "gun") then
-                return 3200 -- Machine guns
+                return 2700 -- Machine guns
             elseif string.find(weaponName, "mp") then
-                return 2600 -- Submachine guns
+                return 1900 -- Submachine guns
             end
         end
     end
-    return 3000
+    return 2500 -- Default fallback
 end
 
+-- Improved bullet drop calculation with proper physics
+local function calculateBulletDrop(distance, bulletSpeed, angle)
+    local gravity = 196.2 -- Roblox gravity
+    local timeToTarget = distance / bulletSpeed
+    
+    -- Calculate horizontal and vertical components
+    local horizontalDistance = distance * math.cos(angle or 0)
+    local verticalDistance = distance * math.sin(angle or 0)
+    
+    -- Calculate bullet drop using proper ballistic formula
+    local drop = (gravity * timeToTarget * timeToTarget) / 2
+    
+    -- Adjust for air resistance (simplified model)
+    local airResistanceFactor = 1 + (distance / 1000) * 0.1
+    drop = drop * airResistanceFactor
+    
+    return drop
+end
+
+-- Enhanced prediction with better physics
 local function getPredictedPosition(targetPart, targetVelocity, distance, bulletSpeed)
+    local camPos = Camera.CFrame.Position
+    local targetPos = targetPart.Position
+    
+    -- Calculate initial time to hit
     local timeToHit = distance / bulletSpeed
     
-    local currentPos = targetPart.Position
-    
-    -- Safely get velocity
+    -- Get current velocity safely
     local currentVel = Vector3.new(0, 0, 0)
     if targetPart.Parent and targetPart.Parent:FindFirstChild("HumanoidRootPart") then
         currentVel = targetPart.Parent.HumanoidRootPart.Velocity
     end
     
-    local velocityMagnitude = currentVel.Magnitude
+    -- Use enhanced velocity if available, otherwise use current velocity
+    local predictionVel = targetVelocity.Magnitude > 0 and targetVelocity or currentVel
     
-    local predictionVel = targetVelocity
-    if velocityMagnitude > 16 then -- Running speed threshold
-        predictionVel = currentVel:Lerp(targetVelocity, 0.3)
-    end
+    -- Predict future position
+    local predictedPos = targetPos + (predictionVel * timeToHit)
     
-    local predictedPos = currentPos + (predictionVel * timeToHit)
+    -- Calculate angle to target for bullet drop calculation
+    local direction = (predictedPos - camPos)
+    local horizontalDistance = Vector3.new(direction.X, 0, direction.Z).Magnitude
+    local angle = math.atan2(-direction.Y, horizontalDistance)
     
-    local gravityDrop = 0.5 * 196.2 * (timeToHit ^ 2) -- Using Roblox gravity
-    predictedPos = predictedPos - Vector3.new(0, gravityDrop, 0)
+    -- Calculate bullet drop
+    local bulletDrop = calculateBulletDrop(distance, bulletSpeed, angle)
     
-    for i = 1, 2 do -- Fewer iterations for better performance
-        local newDistance = (Camera.CFrame.Position - predictedPos).Magnitude
+    -- Apply bullet drop compensation
+    predictedPos = predictedPos + Vector3.new(0, bulletDrop, 0)
+    
+    -- Iterative refinement for better accuracy (especially at long range)
+    for i = 1, 3 do
+        local newDirection = (predictedPos - camPos)
+        local newDistance = newDirection.Magnitude
         local newTimeToHit = newDistance / bulletSpeed
+        local newAngle = math.atan2(-newDirection.Y, Vector3.new(newDirection.X, 0, newDirection.Z).Magnitude)
         
-        local finalVel = velocityMagnitude > 16 and currentVel or predictionVel
-        predictedPos = currentPos + (finalVel * newTimeToHit)
-        predictedPos = predictedPos - Vector3.new(0, 0.5 * 196.2 * (newTimeToHit ^ 2), 0)
+        -- Recalculate with refined values
+        predictedPos = targetPos + (predictionVel * newTimeToHit)
+        local refinedDrop = calculateBulletDrop(newDistance, bulletSpeed, newAngle)
+        predictedPos = predictedPos + Vector3.new(0, refinedDrop, 0)
     end
     
     return predictedPos
@@ -230,6 +262,7 @@ end
 
 local targetVelocities = {} -- Store velocity history
 
+-- Enhanced velocity calculation with better smoothing
 local function getEnhancedVelocity(player)
     if not isValidTarget(player) then
         return Vector3.new(0, 0, 0)
@@ -242,7 +275,8 @@ local function getEnhancedVelocity(player)
         targetVelocities[player] = {
             history = {},
             lastPos = hrp.Position,
-            lastTime = tick()
+            lastTime = tick(),
+            smoothedVel = currentVel
         }
     end
     
@@ -250,39 +284,43 @@ local function getEnhancedVelocity(player)
     local currentTime = tick()
     local deltaTime = currentTime - data.lastTime
     
-    if deltaTime > 0 then
-        local actualVel = (hrp.Position - data.lastPos) / deltaTime
-        table.insert(data.history, {vel = currentVel, actual = actualVel, time = currentTime})
+    if deltaTime > 0.01 then -- Minimum time threshold
+        local positionDelta = hrp.Position - data.lastPos
+        local calculatedVel = positionDelta / deltaTime
+        
+        -- Add to history
+        table.insert(data.history, {
+            vel = currentVel,
+            calculated = calculatedVel,
+            time = currentTime
+        })
+        
+        -- Keep only recent history
+        if #data.history > 5 then
+            table.remove(data.history, 1)
+        end
+        
+        -- Calculate weighted average
+        if #data.history >= 2 then
+            local totalWeight = 0
+            local weightedVel = Vector3.new(0, 0, 0)
+            
+            for i, sample in ipairs(data.history) do
+                local weight = i * i -- Quadratic weighting for more recent samples
+                weightedVel = weightedVel + (sample.calculated * weight)
+                totalWeight = totalWeight + weight
+            end
+            
+            data.smoothedVel = weightedVel / totalWeight
+        else
+            data.smoothedVel = currentVel
+        end
         
         data.lastPos = hrp.Position
         data.lastTime = currentTime
     end
     
-    if #data.history > 3 then
-        table.remove(data.history, 1)
-    end
-    
-    if #data.history > 0 then
-        local recent = data.history[#data.history]
-        local velocityChange = (currentVel - (data.history[1] and data.history[1].vel or currentVel)).Magnitude
-        
-        if velocityChange > 8 then -- Threshold for direction change detection
-            return currentVel
-        end
-        
-        local weightedVel = Vector3.new(0, 0, 0)
-        local totalWeight = 0
-        
-        for i, sample in ipairs(data.history) do
-            local weight = i / #data.history -- More recent = higher weight
-            weightedVel = weightedVel + (sample.actual * weight)
-            totalWeight = totalWeight + weight
-        end
-        
-        return weightedVel / totalWeight
-    end
-    
-    return currentVel
+    return data.smoothedVel
 end
 
 -- Clean up velocity data when players leave
@@ -292,6 +330,7 @@ Players.PlayerRemoving:Connect(function(player)
     end
 end)
 
+-- Improved aim point calculation with distance-based targeting
 local function getOptimalAimPoint(target)
     if not isValidTarget(target) then
         return nil
@@ -299,17 +338,42 @@ local function getOptimalAimPoint(target)
     
     local hrp = target.Character.HumanoidRootPart
     local head = target.Character:FindFirstChild("Head")
+    local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
     
     local velocity = getEnhancedVelocity(target)
     local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
     local bulletSpeed = getCurrentBulletSpeed()
     
-    local targetPart = head or hrp
+    -- Choose target point based on distance and weapon type
+    local targetPart = hrp -- Default to body
+    local aimOffset = Vector3.new(0, 0, 0)
     
+    if head then
+        if distance < 100 then
+            -- Close range: aim for head
+            targetPart = head
+            aimOffset = Vector3.new(0, 0.2, 0) -- Slight upward offset
+        elseif distance < 300 then
+            -- Medium range: aim for upper torso/neck area
+            targetPart = hrp
+            aimOffset = Vector3.new(0, 1.2, 0) -- Chest/neck level
+        else
+            -- Long range: aim for center mass with slight upward bias
+            targetPart = hrp
+            aimOffset = Vector3.new(0, 0.8, 0) -- Upper torso
+        end
+    end
+    
+    -- Get predicted position
     local predictedPos = getPredictedPosition(targetPart, velocity, distance, bulletSpeed)
     
-    if head and distance < 150 then
-        predictedPos = predictedPos + Vector3.new(0, 0.5, 0)
+    -- Apply aim offset
+    predictedPos = predictedPos + aimOffset
+    
+    -- Additional compensation for moving targets at long range
+    if distance > 400 and velocity.Magnitude > 5 then
+        local extraLead = velocity.Unit * (distance / bulletSpeed) * 0.3
+        predictedPos = predictedPos + extraLead
     end
     
     return predictedPos
@@ -327,8 +391,22 @@ local function smoothLook(targetPos)
     end
 end
 
+-- Configuration functions
 function AimbotModule.setSmooth(state)
     useLerp = state
+end
+
+function AimbotModule.setSmoothness(value)
+    AimbotSmoothness = math.clamp(value, 0.01, 1)
+end
+
+function AimbotModule.setRange(range)
+    AimbotRange = math.max(range, 50)
+end
+
+function AimbotModule.setFOVRadius(radius)
+    FOVRadius = math.max(radius, 10)
+    FOVCircle.Size = UDim2.fromOffset(FOVRadius * 2, FOVRadius * 2)
 end
 
 function AimbotModule.toggleAimlock(state)
@@ -369,6 +447,25 @@ end
 
 function AimbotModule.toggleFOVCircle(state)
     FOVCircle.Visible = state
+end
+
+-- Debug function to get current target info
+function AimbotModule.getDebugInfo()
+    local target = getClosestEnemyFOV() or getClosestEnemyByDistance()
+    if target then
+        local distance = (Camera.CFrame.Position - target.Character.HumanoidRootPart.Position).Magnitude
+        local velocity = getEnhancedVelocity(target)
+        local bulletSpeed = getCurrentBulletSpeed()
+        
+        return {
+            targetName = target.Name,
+            distance = math.floor(distance),
+            velocity = velocity,
+            bulletSpeed = bulletSpeed,
+            aimPoint = getOptimalAimPoint(target)
+        }
+    end
+    return nil
 end
 
 return AimbotModule
