@@ -1,4 +1,3 @@
--- ModuleScript: KeySystemModule
 local KeySystem = {}
 
 local HttpService = game:GetService("HttpService")
