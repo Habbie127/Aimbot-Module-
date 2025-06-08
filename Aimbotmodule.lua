@@ -40,7 +40,7 @@ FOVOutline.Thickness = 1
 FOVOutline.Color = Color3.fromRGB(0, 255, 0)
 FOVOutline.Transparency = 0
 
--- Enhanced visibility checker with multiple raycast points
+-- Visibility check unchanged
 local function isVisible(targetPart)
     if not targetPart then return false end
     
@@ -49,11 +49,11 @@ local function isVisible(targetPart)
     local targetSize = targetPart.Size
     
     local testPoints = {
-        targetPos, -- Center
-        targetPos + Vector3.new(targetSize.X/3, 0, 0), -- Right
-        targetPos - Vector3.new(targetSize.X/3, 0, 0), -- Left
-        targetPos + Vector3.new(0, targetSize.Y/3, 0), -- Top
-        targetPos - Vector3.new(0, targetSize.Y/3, 0), -- Bottom
+        targetPos,
+        targetPos + Vector3.new(targetSize.X/3, 0, 0),
+        targetPos - Vector3.new(targetSize.X/3, 0, 0),
+        targetPos + Vector3.new(0, targetSize.Y/3, 0),
+        targetPos - Vector3.new(0, targetSize.Y/3, 0),
     }
     
     local visiblePoints = 0
@@ -74,7 +74,6 @@ local function isVisible(targetPart)
         end
     end
     
-    -- Target visible if at least 40% of test points not blocked
     return (visiblePoints / totalPoints) >= 0.4
 end
 
@@ -198,37 +197,6 @@ local function calculateBulletDrop(distance, bulletSpeed)
     return 0
 end
 
--- Enhanced prediction supporting all directional movements perfectly
-local function getPredictedPosition(targetPart, targetVelocity, distance, bulletSpeed)
-    local targetPos = targetPart.Position
-    
-    local timeToHit = distance / bulletSpeed
-    
-    -- Use velocity prediction, prioritizing the passed targetVelocity
-    local predictionVel = targetVelocity.Magnitude > 0 and targetVelocity or (targetPart.Parent and targetPart.Parent:FindFirstChild("HumanoidRootPart") and targetPart.Parent.HumanoidRootPart.Velocity or Vector3.new(0,0,0))
-    
-    -- Predict future position including movement direction (left,right,front,back and diagonals)
-    local predictedPos = targetPos + (predictionVel * timeToHit)
-    
-    -- Apply bullet drop if needed
-    local bulletDrop = calculateBulletDrop(distance, bulletSpeed)
-    if bulletDrop > 0 then
-        predictedPos = predictedPos - Vector3.new(0, bulletDrop, 0)
-    end
-    
-    -- Refinement iteration to improve accuracy
-    local newDistance = (Camera.CFrame.Position - predictedPos).Magnitude
-    local newTimeToHit = newDistance / bulletSpeed
-    predictedPos = targetPos + (predictionVel * newTimeToHit)
-    
-    local finalDrop = calculateBulletDrop(newDistance, bulletSpeed)
-    if finalDrop > 0 then
-        predictedPos = predictedPos - Vector3.new(0, finalDrop, 0)
-    end
-    
-    return predictedPos
-end
-
 local targetVelocities = {}
 
 local function getEnhancedVelocity(player)
@@ -294,6 +262,40 @@ Players.PlayerRemoving:Connect(function(player)
     end
 end)
 
+-- New function to calculate intercept point between moving target and bullet
+local function calculateIntercept(shooterPos, targetPos, targetVel, projectileSpeed)
+    local displacement = targetPos - shooterPos
+    local velocity = targetVel
+    
+    local a = velocity:Dot(velocity) - projectileSpeed * projectileSpeed
+    local b = 2 * velocity:Dot(displacement)
+    local c = displacement:Dot(displacement)
+    
+    local discriminant = b * b - 4 * a * c
+    
+    if discriminant < 0 or math.abs(a) < 0.001 then
+        -- Cannot solve for intercept, fallback to direct shot
+        local time = displacement.Magnitude / projectileSpeed
+        return targetPos + velocity * time
+    else
+        local sqrtDisc = math.sqrt(discriminant)
+        local t1 = (-b + sqrtDisc) / (2 * a)
+        local t2 = (-b - sqrtDisc) / (2 * a)
+        
+        local t = math.min(t1, t2)
+        if t < 0 then
+            t = math.max(t1, t2)
+        end
+        
+        if t < 0 then
+            -- Both times negative, aim at current position + velocity*time as fallback
+            t = 0
+        end
+        
+        return targetPos + velocity * t
+    end
+end
+
 local function getOptimalAimPoint(target)
     if not isValidTarget(target) then
         return nil
@@ -303,32 +305,28 @@ local function getOptimalAimPoint(target)
     local head = target.Character:FindFirstChild("Head")
     
     local velocity = getEnhancedVelocity(target)
-    local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
+    local shooterPos = Camera.CFrame.Position
     local bulletSpeed = getCurrentBulletSpeed()
+    local targetPos = hrp.Position
     
-    local targetPart = hrp
-    local aimOffset = Vector3.new(0, 0, 0)
+    local distance = (shooterPos - targetPos).Magnitude
     
+    local aimOffset = Vector3.new(0,0,0)
     if head then
         if distance < 150 then
-            targetPart = head
+            targetPos = head.Position
         elseif distance < 350 then
-            targetPart = hrp
             aimOffset = Vector3.new(0, 1.0, 0)
         else
-            targetPart = hrp
             aimOffset = Vector3.new(0, 0.5, 0)
         end
     end
     
-    local predictedPos = getPredictedPosition(targetPart, velocity, distance, bulletSpeed)
+    -- Use intercept calculation for precise aiming against moving targets
+    local predictedPos = calculateIntercept(shooterPos, targetPos, velocity, bulletSpeed)
     
+    -- Add aim offset after prediction
     predictedPos = predictedPos + aimOffset
-    
-    if distance > 450 and velocity.Magnitude > 8 then
-        local extraLead = velocity.Unit * (distance / bulletSpeed) * 0.15
-        predictedPos = predictedPos + extraLead
-    end
     
     return predictedPos
 end
