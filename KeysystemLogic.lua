@@ -1,5 +1,7 @@
 -- ModuleScript: KeySystemModule
 
+local KeySystem = {} 
+
 local service = 4361
 local secret = "b6792e56-46d0-4519-a5a7-1b117076e0a3"
 local useNonce = true
@@ -25,8 +27,6 @@ local hostResponse = fRequest({ Url = host .. "/public/connectivity", Method = "
 if hostResponse.StatusCode ~= 200 and hostResponse.StatusCode ~= 429 then
     host = "https://api.platoboost.net"
 end
-
-local KeySystem = {}
 
 local function lEncode(data) return HttpService:JSONEncode(data) end
 local function lDecode(data) return HttpService:JSONDecode(data) end
