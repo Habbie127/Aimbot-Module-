@@ -7,7 +7,7 @@ local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
 local FOVRadius = 50
-local AimbotRange = 600 -- Increased range to match your needs
+local AimbotRange = 600
 local AimbotSmoothness = 0.1
 local useLerp = false
 
@@ -48,7 +48,6 @@ local function isVisible(targetPart)
     local targetPos = targetPart.Position
     local targetSize = targetPart.Size
     
-    -- Create multiple test points around the target
     local testPoints = {
         targetPos, -- Center
         targetPos + Vector3.new(targetSize.X/3, 0, 0), -- Right
@@ -75,22 +74,19 @@ local function isVisible(targetPart)
         end
     end
     
-    -- Target is considered visible if at least 40% of test points are visible
+    -- Target visible if at least 40% of test points not blocked
     return (visiblePoints / totalPoints) >= 0.4
 end
 
--- Safe function to check if player has valid character and humanoid
 local function isValidTarget(player)
     if not player or player == LocalPlayer then
         return false
     end
     
-    -- Check if player has character
     if not player.Character then
         return false
     end
     
-    -- Check if character has required parts
     local humanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart")
     local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
     
@@ -98,7 +94,6 @@ local function isValidTarget(player)
         return false
     end
     
-    -- Safely check humanoid health
     local success, health = pcall(function()
         return humanoid.Health
     end)
@@ -107,7 +102,6 @@ local function isValidTarget(player)
         return false
     end
     
-    -- Check team (safely handle cases where Team might be nil)
     local playerTeam = player.Team
     local localTeam = LocalPlayer.Team
     
@@ -162,7 +156,6 @@ local function getClosestEnemyFOV()
     return closest
 end
 
--- More realistic bullet speeds for WW1 weapons (reduced from previous values)
 local WeaponBulletSpeeds = {
     ["Lewis Gun"] = 2200, ["Madsen 1905"] = 2300, ["CSRG 1915"] = 2350,
     ["Doppelpistole 1912"] = 1200, ["Gewehr 98"] = 2600, ["Beholla 1915"] = 1000,
@@ -181,65 +174,53 @@ local function getCurrentBulletSpeed()
             end
             local weaponName = string.lower(tool.Name)
             if string.find(weaponName, "rifle") or string.find(weaponName, "gewehr") or string.find(weaponName, "karabiner") then
-                return 2400 -- High velocity rifles
+                return 2400
             elseif string.find(weaponName, "pistol") or string.find(weaponName, "beholla") then
-                return 1100 -- Pistols
+                return 1100
             elseif string.find(weaponName, "mg") or string.find(weaponName, "gun") then
-                return 2100 -- Machine guns
+                return 2100
             elseif string.find(weaponName, "mp") then
-                return 1300 -- Submachine guns
+                return 1300
             end
         end
     end
-    return 2000 -- Default fallback (reduced)
+    return 2000
 end
 
--- Simplified bullet drop calculation - many games don't simulate realistic bullet drop
 local function calculateBulletDrop(distance, bulletSpeed)
-    -- Most arcade-style WW1 games have minimal or no bullet drop
-    -- Only apply very slight drop for extreme distances
     local timeToTarget = distance / bulletSpeed
     
     if distance > 500 then
-        -- Very minimal drop only for extreme range
-        local minimalDrop = (distance - 500) / 200 -- 1 stud drop per 200 studs past 500
-        return math.min(minimalDrop, 3) -- Cap at 3 studs maximum
+        local minimalDrop = (distance - 500) / 200
+        return math.min(minimalDrop, 3)
     end
     
-    return 0 -- No bullet drop for most ranges
+    return 0
 end
 
--- Simplified prediction focused on movement, not bullet drop
+-- Enhanced prediction supporting all directional movements perfectly
 local function getPredictedPosition(targetPart, targetVelocity, distance, bulletSpeed)
     local targetPos = targetPart.Position
     
-    -- Calculate time to hit target
     local timeToHit = distance / bulletSpeed
     
-    -- Get current velocity safely
-    local currentVel = Vector3.new(0, 0, 0)
-    if targetPart.Parent and targetPart.Parent:FindFirstChild("HumanoidRootPart") then
-        currentVel = targetPart.Parent.HumanoidRootPart.Velocity
-    end
+    -- Use velocity prediction, prioritizing the passed targetVelocity
+    local predictionVel = targetVelocity.Magnitude > 0 and targetVelocity or (targetPart.Parent and targetPart.Parent:FindFirstChild("HumanoidRootPart") and targetPart.Parent.HumanoidRootPart.Velocity or Vector3.new(0,0,0))
     
-    -- Use the better velocity prediction
-    local predictionVel = targetVelocity.Magnitude > 0 and targetVelocity or currentVel
-    
-    -- Predict future position based on movement only
+    -- Predict future position including movement direction (left,right,front,back and diagonals)
     local predictedPos = targetPos + (predictionVel * timeToHit)
     
-    -- Apply minimal bullet drop only for extreme distances
+    -- Apply bullet drop if needed
     local bulletDrop = calculateBulletDrop(distance, bulletSpeed)
     if bulletDrop > 0 then
-        predictedPos = predictedPos - Vector3.new(0, bulletDrop, 0) -- SUBTRACT for drop
+        predictedPos = predictedPos - Vector3.new(0, bulletDrop, 0)
     end
     
-    -- Simple refinement iteration
+    -- Refinement iteration to improve accuracy
     local newDistance = (Camera.CFrame.Position - predictedPos).Magnitude
     local newTimeToHit = newDistance / bulletSpeed
     predictedPos = targetPos + (predictionVel * newTimeToHit)
     
-    -- Reapply minimal drop
     local finalDrop = calculateBulletDrop(newDistance, bulletSpeed)
     if finalDrop > 0 then
         predictedPos = predictedPos - Vector3.new(0, finalDrop, 0)
@@ -248,12 +229,11 @@ local function getPredictedPosition(targetPart, targetVelocity, distance, bullet
     return predictedPos
 end
 
-local targetVelocities = {} -- Store velocity history
+local targetVelocities = {}
 
--- Enhanced velocity calculation with better smoothing
 local function getEnhancedVelocity(player)
     if not isValidTarget(player) then
-        return Vector3.new(0, 0, 0)
+        return Vector3.new(0,0,0)
     end
     
     local hrp = player.Character.HumanoidRootPart
@@ -272,29 +252,26 @@ local function getEnhancedVelocity(player)
     local currentTime = tick()
     local deltaTime = currentTime - data.lastTime
     
-    if deltaTime > 0.01 then -- Minimum time threshold
+    if deltaTime > 0.01 then
         local positionDelta = hrp.Position - data.lastPos
         local calculatedVel = positionDelta / deltaTime
         
-        -- Add to history
         table.insert(data.history, {
             vel = currentVel,
             calculated = calculatedVel,
             time = currentTime
         })
         
-        -- Keep only recent history
         if #data.history > 5 then
             table.remove(data.history, 1)
         end
         
-        -- Calculate weighted average
         if #data.history >= 2 then
             local totalWeight = 0
-            local weightedVel = Vector3.new(0, 0, 0)
+            local weightedVel = Vector3.new(0,0,0)
             
             for i, sample in ipairs(data.history) do
-                local weight = i * i -- Quadratic weighting for more recent samples
+                local weight = i * i
                 weightedVel = weightedVel + (sample.calculated * weight)
                 totalWeight = totalWeight + weight
             end
@@ -311,14 +288,12 @@ local function getEnhancedVelocity(player)
     return data.smoothedVel
 end
 
--- Clean up velocity data when players leave
 Players.PlayerRemoving:Connect(function(player)
     if targetVelocities[player] then
         targetVelocities[player] = nil
     end
 end)
 
--- Simplified aim point calculation focused on direct hits
 local function getOptimalAimPoint(target)
     if not isValidTarget(target) then
         return nil
@@ -331,32 +306,25 @@ local function getOptimalAimPoint(target)
     local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
     local bulletSpeed = getCurrentBulletSpeed()
     
-    -- Choose target point based on distance
-    local targetPart = hrp -- Default to body center
+    local targetPart = hrp
     local aimOffset = Vector3.new(0, 0, 0)
     
     if head then
         if distance < 150 then
-            -- Close range: aim for head
             targetPart = head
         elseif distance < 350 then
-            -- Medium range: aim for upper chest/neck
             targetPart = hrp
-            aimOffset = Vector3.new(0, 1.0, 0) -- Chest level
+            aimOffset = Vector3.new(0, 1.0, 0)
         else
-            -- Long range: aim for center mass
             targetPart = hrp
-            aimOffset = Vector3.new(0, 0.5, 0) -- Slightly above center
+            aimOffset = Vector3.new(0, 0.5, 0)
         end
     end
     
-    -- Get predicted position (now without excessive bullet drop)
     local predictedPos = getPredictedPosition(targetPart, velocity, distance, bulletSpeed)
     
-    -- Apply aim offset
     predictedPos = predictedPos + aimOffset
     
-    -- For very long range moving targets, add slight extra lead
     if distance > 450 and velocity.Magnitude > 8 then
         local extraLead = velocity.Unit * (distance / bulletSpeed) * 0.15
         predictedPos = predictedPos + extraLead
@@ -377,7 +345,6 @@ local function smoothLook(targetPos)
     end
 end
 
--- Configuration functions
 function AimbotModule.setSmooth(state)
     useLerp = state
 end
@@ -435,7 +402,6 @@ function AimbotModule.toggleFOVCircle(state)
     FOVCircle.Visible = state
 end
 
--- Debug function to get current target info
 function AimbotModule.getDebugInfo()
     local target = getClosestEnemyFOV() or getClosestEnemyByDistance()
     if target then
