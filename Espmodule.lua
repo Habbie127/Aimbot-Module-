@@ -9,7 +9,7 @@ local espHighlights = {}
 local ESPColor = Color3.fromRGB(0, 255, 0)
 local espEnabled = false
 local espConnection = nil
-local highlightDistance = 300
+local highlightDistance = 400
 
 local espDistanceEnabled = false
 local espDistanceConnection = nil
