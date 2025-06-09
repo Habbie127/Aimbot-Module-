@@ -6,10 +6,11 @@ local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
-local FOVRadius = 50
+local FOVRadius = 60
 local AimbotRange = 600 -- Increased range to match your needs
-local AimbotSmoothness = 0.1
+local AimbotSmoothness = 0.3
 local useLerp = false
+local visibilityCheckEnabled = false
 
 local aimlockEnabled = false
 local nearestAimbotEnabled = false
@@ -40,7 +41,6 @@ FOVOutline.Thickness = 1
 FOVOutline.Color = Color3.fromRGB(0, 255, 0)
 FOVOutline.Transparency = 0
 
--- Enhanced visibility checker with multiple raycast points
 local function isVisible(targetPart)
     if not targetPart then return false end
     
@@ -48,7 +48,6 @@ local function isVisible(targetPart)
     local targetPos = targetPart.Position
     local targetSize = targetPart.Size
     
-    -- Create multiple test points around the target
     local testPoints = {
         targetPos, -- Center
         targetPos + Vector3.new(targetSize.X/3, 0, 0), -- Right
@@ -70,27 +69,25 @@ local function isVisible(targetPart)
         
         local result = Workspace:Raycast(origin, direction.Unit * distance, raycastParams)
         
-        if not result then
-            visiblePoints = visiblePoints + 1
-        end
+        if not result or
+        result.Instance.Transparency > 0.5
+        then
+		        visiblePoints += 1
+		end
     end
     
-    -- Target is considered visible if at least 40% of test points are visible
     return (visiblePoints / totalPoints) >= 0.4
 end
 
--- Safe function to check if player has valid character and humanoid
 local function isValidTarget(player)
     if not player or player == LocalPlayer then
         return false
     end
     
-    -- Check if player has character
     if not player.Character then
         return false
     end
     
-    -- Check if character has required parts
     local humanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart")
     local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
     
@@ -98,7 +95,6 @@ local function isValidTarget(player)
         return false
     end
     
-    -- Safely check humanoid health
     local success, health = pcall(function()
         return humanoid.Health
     end)
@@ -107,7 +103,6 @@ local function isValidTarget(player)
         return false
     end
     
-    -- Check team (safely handle cases where Team might be nil)
     local playerTeam = player.Team
     local localTeam = LocalPlayer.Team
     
@@ -120,12 +115,14 @@ end
 
 local function getClosestEnemyByDistance()
     local closest, shortest = nil, AimbotRange
-    
+
     for _, player in ipairs(Players:GetPlayers()) do
         if isValidTarget(player) then
-            local hrp = player.Character.HumanoidRootPart
-            
-            if isVisible(hrp) then
+            local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+            local visible = (not visibilityCheckEnabled) or isVisible(hrp)
+
+            if visible then
                 local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
                 if distance <= shortest then
                     shortest = distance
@@ -134,18 +131,20 @@ local function getClosestEnemyByDistance()
             end
         end
     end
-    
+
     return closest
 end
 
 local function getClosestEnemyFOV()
     local closest, minDist = nil, FOVRadius
-    
+
     for _, player in ipairs(Players:GetPlayers()) do
         if isValidTarget(player) then
-            local hrp = player.Character.HumanoidRootPart
-            
-            if isVisible(hrp) then
+            local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+            local visible = (not visibilityCheckEnabled) or isVisible(hrp)
+
+            if visible then
                 local screenPos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
                 if onScreen then
                     local screenCenter = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
@@ -158,17 +157,22 @@ local function getClosestEnemyFOV()
             end
         end
     end
-    
+
     return closest
 end
 
--- More realistic bullet speeds for WW1 weapons (reduced from previous values)
 local WeaponBulletSpeeds = {
-    ["Lewis Gun"] = 2200, ["Madsen 1905"] = 2300, ["CSRG 1915"] = 2350,
-    ["Doppelpistole 1912"] = 1200, ["Gewehr 98"] = 2600, ["Beholla 1915"] = 1000,
-    ["Farquhar Hill P08"] = 2200, ["Karabiner 98AZ"] = 2500, ["Mannlicher 1895"] = 2600,
-    ["MG 15na"] = 2125, ["MP18,-I"] = 1300, ["Selbstlader 1906"] = 2500,
-    ["RSC 1917"] = 2500, ["Ribeyrolles 1918"] = 1300,
+    ["Lewis Gun"] = 3300, ["Madsen 1905"] = 3400, ["CSRG 1915"] = 3450,
+    ["Doppelpistole 1912"] = 2400, ["Gewehr 98"] = 4200, ["Beholla 1915"] = 2200,
+    ["Farquhar Hill P08"] = 3500, ["Karabiner 98AZ"] = 3600, ["Mannlicher 1895"] = 4200,
+    ["MG 15na"] = 3225, ["Selbstlader 1906"] = 3600,
+    ["RSC 1917"] = 3600, ["Ribeyrolles 1918"] = 2600, ["Lebel 1886/93"] = 3900, 
+    ["Enfield P1914"] = 4200, ["Mosin 1891"] = 4200, ["Mannlicher 1895 Stutzen"] = 3600, 
+    ["Berthier 1892/16"] = 3600, ["SMLE Mk III"] = 3500, ["MP18,-I"] = 2600, 
+    ["Steyr Hahn 1912"] = 2250, ["Huot Automatic Rifle"] = 2700, ["Fedorov Avtomat"] = 2600, 
+    ["Repetierpistole 1912/16"] = 2250, ["Mauser 1914"] = 2200, ["Ruby 1915"] = 2200, 
+    ["Webley & Scott 1913"] = 2200, ["Frommer Stop 1912"] = 2200, ["Mannlicher 1895 Scoped"] = 3900, 
+    ["Enfield P1914 Scoped"] = 4200, ["Luger P08"] = 2250, ["St. Etienne 1892"] = 2400, 
 }
 
 local function getCurrentBulletSpeed()
@@ -176,32 +180,16 @@ local function getCurrentBulletSpeed()
     if character then
         local tool = character:FindFirstChildOfClass("Tool")
         if tool then
-            if WeaponBulletSpeeds[tool.Name] then
-                return WeaponBulletSpeeds[tool.Name]
-            end
-            local weaponName = string.lower(tool.Name)
-            if string.find(weaponName, "rifle") or string.find(weaponName, "gewehr") or string.find(weaponName, "karabiner") then
-                return 2400 -- High velocity rifles
-            elseif string.find(weaponName, "pistol") or string.find(weaponName, "beholla") then
-                return 1100 -- Pistols
-            elseif string.find(weaponName, "mg") or string.find(weaponName, "gun") then
-                return 2100 -- Machine guns
-            elseif string.find(weaponName, "mp") then
-                return 1300 -- Submachine guns
-            end
+            return WeaponBulletSpeeds[tool.Name] or 2400
         end
     end
-    return 2000 -- Default fallback (reduced)
+    return 2400
 end
 
--- Simplified bullet drop calculation - many games don't simulate realistic bullet drop
 local function calculateBulletDrop(distance, bulletSpeed)
-    -- Most arcade-style WW1 games have minimal or no bullet drop
-    -- Only apply very slight drop for extreme distances
     local timeToTarget = distance / bulletSpeed
     
     if distance > 500 then
-        -- Very minimal drop only for extreme range
         local minimalDrop = (distance - 500) / 200 -- 1 stud drop per 200 studs past 500
         return math.min(minimalDrop, 3) -- Cap at 3 studs maximum
     end
@@ -209,37 +197,29 @@ local function calculateBulletDrop(distance, bulletSpeed)
     return 0 -- No bullet drop for most ranges
 end
 
--- Simplified prediction focused on movement, not bullet drop
 local function getPredictedPosition(targetPart, targetVelocity, distance, bulletSpeed)
     local targetPos = targetPart.Position
     
-    -- Calculate time to hit target
     local timeToHit = distance / bulletSpeed
     
-    -- Get current velocity safely
     local currentVel = Vector3.new(0, 0, 0)
     if targetPart.Parent and targetPart.Parent:FindFirstChild("HumanoidRootPart") then
         currentVel = targetPart.Parent.HumanoidRootPart.Velocity
     end
     
-    -- Use the better velocity prediction
     local predictionVel = targetVelocity.Magnitude > 0 and targetVelocity or currentVel
     
-    -- Predict future position based on movement only
     local predictedPos = targetPos + (predictionVel * timeToHit)
     
-    -- Apply minimal bullet drop only for extreme distances
     local bulletDrop = calculateBulletDrop(distance, bulletSpeed)
     if bulletDrop > 0 then
         predictedPos = predictedPos - Vector3.new(0, bulletDrop, 0) -- SUBTRACT for drop
     end
     
-    -- Simple refinement iteration
     local newDistance = (Camera.CFrame.Position - predictedPos).Magnitude
     local newTimeToHit = newDistance / bulletSpeed
     predictedPos = targetPos + (predictionVel * newTimeToHit)
     
-    -- Reapply minimal drop
     local finalDrop = calculateBulletDrop(newDistance, bulletSpeed)
     if finalDrop > 0 then
         predictedPos = predictedPos - Vector3.new(0, finalDrop, 0)
@@ -248,9 +228,8 @@ local function getPredictedPosition(targetPart, targetVelocity, distance, bullet
     return predictedPos
 end
 
-local targetVelocities = {} -- Store velocity history
+local targetVelocities = {}
 
--- Enhanced velocity calculation with better smoothing
 local function getEnhancedVelocity(player)
     if not isValidTarget(player) then
         return Vector3.new(0, 0, 0)
@@ -276,19 +255,16 @@ local function getEnhancedVelocity(player)
         local positionDelta = hrp.Position - data.lastPos
         local calculatedVel = positionDelta / deltaTime
         
-        -- Add to history
         table.insert(data.history, {
             vel = currentVel,
             calculated = calculatedVel,
             time = currentTime
         })
         
-        -- Keep only recent history
         if #data.history > 5 then
             table.remove(data.history, 1)
         end
         
-        -- Calculate weighted average
         if #data.history >= 2 then
             local totalWeight = 0
             local weightedVel = Vector3.new(0, 0, 0)
@@ -311,75 +287,84 @@ local function getEnhancedVelocity(player)
     return data.smoothedVel
 end
 
--- Clean up velocity data when players leave
 Players.PlayerRemoving:Connect(function(player)
     if targetVelocities[player] then
         targetVelocities[player] = nil
     end
 end)
 
--- Simplified aim point calculation focused on direct hits
+local function solveBallisticArc(shooterPos, targetPos, targetVel, bulletSpeed, gravity)
+    local displacement = targetPos - shooterPos
+    local targetVelXZ = Vector3.new(targetVel.X, 0, targetVel.Z)
+    local displacementXZ = Vector3.new(displacement.X, 0, displacement.Z)
+    local horizontalDistance = displacementXZ.Magnitude
+
+    local relativeVelocity = targetVelXZ
+    local timeGuess = horizontalDistance / bulletSpeed
+
+    local predictedTargetPos = targetPos + targetVel * timeGuess
+    local displacementNew = predictedTargetPos - shooterPos
+    local dx = Vector3.new(displacementNew.X, 0, displacementNew.Z).Magnitude
+    local dy = displacementNew.Y
+    local g = gravity
+    local v = bulletSpeed
+
+    local root = v^4 - g * (g * dx^2 + 2 * dy * v^2)
+
+    if root < 0 then
+        return predictedTargetPos -- fallback: just aim ahead
+    end
+
+    local angle = math.atan((v^2 - math.sqrt(root)) / (g * dx))
+    local time = dx / (v * math.cos(angle))
+
+    return targetPos + targetVel * time - Vector3.new(0, 0.5 * g * time * time, 0)
+end
+
 local function getOptimalAimPoint(target)
-    if not isValidTarget(target) then
-        return nil
-    end
-    
-    local hrp = target.Character.HumanoidRootPart
+    if not isValidTarget(target) then return nil end
+
+    local hrp = target.Character:FindFirstChild("HumanoidRootPart")
     local head = target.Character:FindFirstChild("Head")
-    
-    local velocity = getEnhancedVelocity(target)
-    local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
+    if not hrp then return nil end
+
+    local shooterPos = Camera.CFrame.Position
     local bulletSpeed = getCurrentBulletSpeed()
-    
-    -- Choose target point based on distance
-    local targetPart = hrp -- Default to body center
-    local aimOffset = Vector3.new(0, 0, 0)
-    
-    if head then
-        if distance < 150 then
-            -- Close range: aim for head
-            targetPart = head
-        elseif distance < 350 then
-            -- Medium range: aim for upper chest/neck
-            targetPart = hrp
-            aimOffset = Vector3.new(0, 1.0, 0) -- Chest level
-        else
-            -- Long range: aim for center mass
-            targetPart = hrp
-            aimOffset = Vector3.new(0, 0.5, 0) -- Slightly above center
-        end
+    local gravity = workspace.Gravity
+    local velocity = getEnhancedVelocity(target)
+
+    local aimPart = hrp
+    local distance = (shooterPos - hrp.Position).Magnitude
+
+    if head and distance < 150 then
+        aimPart = head
     end
-    
-    -- Get predicted position (now without excessive bullet drop)
-    local predictedPos = getPredictedPosition(targetPart, velocity, distance, bulletSpeed)
-    
-    -- Apply aim offset
-    predictedPos = predictedPos + aimOffset
-    
-    -- For very long range moving targets, add slight extra lead
-    if distance > 450 and velocity.Magnitude > 8 then
-        local extraLead = velocity.Unit * (distance / bulletSpeed) * 0.15
-        predictedPos = predictedPos + extraLead
-    end
-    
-    return predictedPos
+
+    return solveBallisticArc(shooterPos, aimPart.Position, velocity, bulletSpeed, gravity)
 end
 
 local function smoothLook(targetPos)
     local camPos = Camera.CFrame.Position
+    local currentLook = Camera.CFrame.LookVector
+    local desiredLook = (targetPos - camPos).Unit
+    local angleDiff = math.acos(math.clamp(currentLook:Dot(desiredLook), -1, 1))
+
+    local lerpAlpha = math.clamp(angleDiff / math.rad(45), 0.1, 1) * AimbotSmoothness
+
     if useLerp then
-        local currentLook = Camera.CFrame.LookVector
-        local desiredLook = (targetPos - camPos).Unit
-        local lerpedLook = currentLook:Lerp(desiredLook, AimbotSmoothness)
+        local lerpedLook = currentLook:Lerp(desiredLook, lerpAlpha)
         Camera.CFrame = CFrame.new(camPos, camPos + lerpedLook)
     else
         Camera.CFrame = CFrame.new(camPos, targetPos)
     end
 end
 
--- Configuration functions
 function AimbotModule.setSmooth(state)
     useLerp = state
+end
+
+function AimbotModule.setVisibilityCheck(state)
+    visibilityCheckEnabled = state
 end
 
 function AimbotModule.setSmoothness(value)
@@ -409,7 +394,7 @@ function AimbotModule.toggleAimlock(state)
             end
         end)
     else
-        if aimlockConnection then aimlockConnection:Disconnect() end
+        if aimlockConnection then aimlockConnection:Disconnect(); aimlockConnection = nil end
     end
 end
 
@@ -433,25 +418,6 @@ end
 
 function AimbotModule.toggleFOVCircle(state)
     FOVCircle.Visible = state
-end
-
--- Debug function to get current target info
-function AimbotModule.getDebugInfo()
-    local target = getClosestEnemyFOV() or getClosestEnemyByDistance()
-    if target then
-        local distance = (Camera.CFrame.Position - target.Character.HumanoidRootPart.Position).Magnitude
-        local velocity = getEnhancedVelocity(target)
-        local bulletSpeed = getCurrentBulletSpeed()
-        
-        return {
-            targetName = target.Name,
-            distance = math.floor(distance),
-            velocity = velocity,
-            bulletSpeed = bulletSpeed,
-            aimPoint = getOptimalAimPoint(target)
-        }
-    end
-    return nil
 end
 
 return AimbotModule
