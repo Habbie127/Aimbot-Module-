@@ -118,8 +118,7 @@ local function getClosestEnemyByDistance()
 
     for _, player in ipairs(Players:GetPlayers()) do
         if isValidTarget(player) then
-            local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-            if hrp then
+            local hrp = player.Character.HumanoidRootPart
             local visible = (not visibilityCheckEnabled) or isVisible(hrp)
 
             if visible then
@@ -140,8 +139,7 @@ local function getClosestEnemyFOV()
 
     for _, player in ipairs(Players:GetPlayers()) do
         if isValidTarget(player) then
-            local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-            if hrp then
+            local hrp = player.Character.HumanoidRootPart
             local visible = (not visibilityCheckEnabled) or isVisible(hrp)
 
             if visible then
@@ -165,7 +163,7 @@ local WeaponBulletSpeeds = {
     ["Lewis Gun"] = 3300, ["Madsen 1905"] = 3400, ["CSRG 1915"] = 3450,
     ["Doppelpistole 1912"] = 2400, ["Gewehr 98"] = 4200, ["Beholla 1915"] = 2200,
     ["Farquhar Hill P08"] = 3500, ["Karabiner 98AZ"] = 3600, ["Mannlicher 1895"] = 4200,
-    ["MG 15na"] = 3225, ["Selbstlader 1906"] = 3600,
+    ["MG 15na"] = 3225, ["MP18,-I"] = 1300, ["Selbstlader 1906"] = 3600,
     ["RSC 1917"] = 3600, ["Ribeyrolles 1918"] = 2600, ["Lebel 1886/93"] = 3900, 
     ["Enfield P1914"] = 4200, ["Mosin 1891"] = 4200, ["Mannlicher 1895 Stutzen"] = 3600, 
     ["Berthier 1892/16"] = 3600, ["SMLE Mk III"] = 3500, ["MP18,-I"] = 2600, 
@@ -394,7 +392,7 @@ function AimbotModule.toggleAimlock(state)
             end
         end)
     else
-        if aimlockConnection then aimlockConnection:Disconnect(); aimlockConnection = nil end
+        if aimlockConnection then aimlockConnection:Disconnect() end
     end
 end
 
@@ -418,6 +416,24 @@ end
 
 function AimbotModule.toggleFOVCircle(state)
     FOVCircle.Visible = state
+end
+
+function AimbotModule.getDebugInfo()
+    local target = getClosestEnemyFOV() or getClosestEnemyByDistance()
+    if target then
+        local distance = (Camera.CFrame.Position - target.Character.HumanoidRootPart.Position).Magnitude
+        local velocity = getEnhancedVelocity(target)
+        local bulletSpeed = getCurrentBulletSpeed()
+        
+        return {
+            targetName = target.Name,
+            distance = math.floor(distance),
+            velocity = velocity,
+            bulletSpeed = bulletSpeed,
+            aimPoint = getOptimalAimPoint(target)
+        }
+    end
+    return nil
 end
 
 return AimbotModule
