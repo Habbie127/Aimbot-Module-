@@ -56,38 +56,34 @@ end
 
 local function isVisible(targetPart)
     if not targetPart then return false end
-    
     local origin = Camera.CFrame.Position
     local targetPos = targetPart.Position
     local targetSize = targetPart.Size
-    
+
     local testPoints = {
-        targetPos, -- Center
-        targetPos + Vector3.new(targetSize.X/3, 0, 0), -- Right
-        targetPos - Vector3.new(targetSize.X/3, 0, 0), -- Left
-        targetPos + Vector3.new(0, targetSize.Y/3, 0), -- Top
-        targetPos - Vector3.new(0, targetSize.Y/3, 0), -- Bottom
+        targetPos,
+        targetPos + Vector3.new(targetSize.X / 3, 0, 0),
+        targetPos - Vector3.new(targetSize.X / 3, 0, 0),
+        targetPos + Vector3.new(0, targetSize.Y / 3, 0),
+        targetPos - Vector3.new(0, targetSize.Y / 3, 0),
     }
-    
+
     local visiblePoints = 0
-    local totalPoints = #testPoints
-    
-    for _, testPoint in ipairs(testPoints) do
-        local direction = testPoint - origin
-        local distance = direction.Magnitude
-        
-        local raycastParams = RaycastParams.new()
-        raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-        raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, targetPart.Parent}
-        
-        local result = Workspace:Raycast(origin, direction.Unit * distance, raycastParams)
-        
-        if not result or (result.Instance and isBush(result.Instance)) then
-            visiblePoints = visiblePoints + 1
+    for _, point in ipairs(testPoints) do
+        local dir = point - origin
+        local rayParams = RaycastParams.new()
+        rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+        rayParams.FilterDescendantsInstances = {LocalPlayer.Character, targetPart.Parent}
+        rayParams.IgnoreWater = true
+
+        local result = Workspace:Raycast(origin, dir.Unit * dir.Magnitude, rayParams)
+
+        if not result or (result.Instance and not isBush(result.Instance)) then
+            visiblePoints += 1
         end
     end
-    
-    return (visiblePoints / totalPoints) >= 0.4
+
+    return (visiblePoints / #testPoints) >= 0.4
 end
 
 local function isValidTarget(player)
