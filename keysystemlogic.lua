@@ -1,3 +1,10 @@
+-- Block script from running in unsupported games
+local allowedPlaceId = 3678761576 -- 🔁 Replace with your game's real PlaceId
+if game.PlaceId ~= allowedPlaceId then
+	warn("🚫 This script is not supported in this game.")
+	return {}
+end
+
 local KeySystem = {}
 
 local HttpService = game:GetService("HttpService")
