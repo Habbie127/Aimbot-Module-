@@ -37,6 +37,8 @@ local function storeOriginalSettings()
     end)
 end
 
+local bushKeywords = {"Bush", "BushLeave", "leaves", "leaf", "bushy", "bushes", "Grass"}
+
 local function optimizePart(part)
     pcall(function()
         if not part or not part.Parent or FastModeModule.processedParts[part] then 
@@ -47,14 +49,30 @@ local function optimizePart(part)
             originalMaterial = part.Material,
             originalReflectance = part.Reflectance,
             originalCastShadow = part.CastShadow,
-            originalCanCollide = part.CanCollide
+            originalCanCollide = part.CanCollide,
+			originalTransparency = part.Transparency -- Store original transparency
         }
         
-        if part.Material ~= Enum.Material.Air then
-            part.Material = Enum.Material.Plastic
-            part.Reflectance = 0
-            part.CastShadow = false
-        end
+        local partNameLower = part.Name:lower()
+local isBushPart = false
+for _, keyword in ipairs(bushKeywords) do
+	if partNameLower:find(keyword) then
+		isBushPart = true
+		break
+	end
+end
+
+if partNameLower:find("grass") or isBushPart then
+	part.Transparency = 1
+	part.CanCollide = false
+	part.Enabled = false
+else
+	if part.Material ~= Enum.Material.Air then
+		part.Material = Enum.Material.Plastic
+		part.Reflectance = 0
+		part.CastShadow = false
+	end
+end
         
         for _, child in pairs(part:GetChildren()) do
             pcall(function()
@@ -88,7 +106,9 @@ local function restorePart(part)
         part.Material = original.originalMaterial
         part.Reflectance = original.originalReflectance
         part.CastShadow = original.originalCastShadow
-        
+		part.Transparency = original.originalTransparency -- Restore original transparency
+        part.Enabled = true -- Re-enable the part
+
         for _, child in pairs(part:GetChildren()) do
             pcall(function()
                 if child:IsA("Decal") or child:IsA("Texture") then
