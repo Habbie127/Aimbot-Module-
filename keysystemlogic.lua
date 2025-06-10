@@ -12,6 +12,7 @@ if game.PlaceId ~= allowedPlaceId then
     frame.Size = UDim2.new(0.6, 0, 0.2, 0)
     frame.Position = UDim2.new(0.2, 0, 0.4, 0)
     frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    frame.BackgroundTransparency = 1
     frame.BorderSizePixel = 0
     frame.Parent = gui
 
@@ -21,7 +22,7 @@ if game.PlaceId ~= allowedPlaceId then
     text.Text = "🚫 This game is not supported by this script."
     text.TextColor3 = Color3.new(1, 1, 1)
     text.TextScaled = true
-    text.Font = Enum.Font.SourceSansBold
+    text.Font = Enum.Font.Garamond
     text.Parent = frame
     return {}
 end
