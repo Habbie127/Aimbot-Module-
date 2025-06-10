@@ -1,4 +1,4 @@
-local allowedPlaceId = 1234567890 -- 🔁 Replace with your real game ID
+local allowedPlaceId = 3678761576 -- 🔁 Replace with your real game ID
 if game.PlaceId ~= allowedPlaceId then
     local gui = Instance.new("ScreenGui")
     gui.Name = "KeySystemBlockedGui"
