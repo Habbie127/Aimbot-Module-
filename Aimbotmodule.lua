@@ -41,6 +41,17 @@ FOVOutline.Thickness = 1
 FOVOutline.Color = Color3.fromRGB(0, 255, 0)
 FOVOutline.Transparency = 0
 
+local function isBush(part)
+	if not part or not part:IsA("BasePart") then return false end
+	local bushNames = {
+		["Bush"] = true,
+		["BushLeave"] = true,
+		["Leaves"] = true,
+		["Bushes"] = true
+	}
+	return bushNames[part.Name] == true or (part.Parent and bushNames[part.Parent.Name] == true)
+end
+
 local function isVisible(targetPart)
 	if not targetPart then return false end
 	local origin = Camera.CFrame.Position
@@ -62,7 +73,8 @@ local function isVisible(targetPart)
 		rayParams.FilterType = Enum.RaycastFilterType.Blacklist
 		rayParams.FilterDescendantsInstances = {LocalPlayer.Character, targetPart.Parent}
 		local result = Workspace:Raycast(origin, dir.Unit * dir.Magnitude, rayParams)
-		if not result then
+		
+		if not result or isBush(result.Instance) then
 			visiblePoints += 1
 		end
 	end
