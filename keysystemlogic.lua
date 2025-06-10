@@ -24,6 +24,11 @@ if game.PlaceId ~= allowedPlaceId then
     text.TextScaled = true
     text.Font = Enum.Font.Garamond
     text.Parent = frame
+    task.delay(8, function()
+        if gui then
+            gui:Destroy()
+        end
+    end)
     return {}
 end
 
