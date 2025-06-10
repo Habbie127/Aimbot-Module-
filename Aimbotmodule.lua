@@ -6,7 +6,7 @@ local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
-local FOVRadius = 50
+local FOVRadius = 60
 local AimbotRange = 600 -- Increased range to match your needs
 local AimbotSmoothness = 0.3
 local useLerp = false
@@ -83,8 +83,8 @@ local function isVisible(targetPart)
         local result = Workspace:Raycast(origin, direction.Unit * distance, raycastParams)
         
         if not result or (result.Instance and isBush(result.Instance)) then
-            visiblePoints = visiblePoints + 1
-        end
+		        visiblePoints += 1
+		end
     end
     
     return (visiblePoints / totalPoints) >= 0.4
@@ -126,12 +126,12 @@ end
 
 local function getClosestEnemyByDistance()
     local closest, shortest = nil, AimbotRange
-    
+
     for _, player in ipairs(Players:GetPlayers()) do
         if isValidTarget(player) then
             local hrp = player.Character.HumanoidRootPart
             local visible = (not visibilityCheckEnabled) or isVisible(hrp)
-            
+
             if visible then
                 local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
                 if distance <= shortest then
@@ -141,18 +141,18 @@ local function getClosestEnemyByDistance()
             end
         end
     end
-    
+
     return closest
 end
 
 local function getClosestEnemyFOV()
     local closest, minDist = nil, FOVRadius
-    
+
     for _, player in ipairs(Players:GetPlayers()) do
         if isValidTarget(player) then
             local hrp = player.Character.HumanoidRootPart
             local visible = (not visibilityCheckEnabled) or isVisible(hrp)
-            
+
             if visible then
                 local screenPos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
                 if onScreen then
@@ -166,7 +166,7 @@ local function getClosestEnemyFOV()
             end
         end
     end
-    
+
     return closest
 end
 
@@ -237,7 +237,7 @@ local function getPredictedPosition(targetPart, targetVelocity, distance, bullet
     return predictedPos
 end
 
-local targetVelocities = {} -- Store velocity history
+local targetVelocities = {}
 
 local function getEnhancedVelocity(player)
     if not isValidTarget(player) then
@@ -302,51 +302,66 @@ Players.PlayerRemoving:Connect(function(player)
     end
 end)
 
+local function solveBallisticArc(shooterPos, targetPos, targetVel, bulletSpeed, gravity)
+    local displacement = targetPos - shooterPos
+    local targetVelXZ = Vector3.new(targetVel.X, 0, targetVel.Z)
+    local displacementXZ = Vector3.new(displacement.X, 0, displacement.Z)
+    local horizontalDistance = displacementXZ.Magnitude
+
+    local relativeVelocity = targetVelXZ
+    local timeGuess = horizontalDistance / bulletSpeed
+
+    local predictedTargetPos = targetPos + targetVel * timeGuess
+    local displacementNew = predictedTargetPos - shooterPos
+    local dx = Vector3.new(displacementNew.X, 0, displacementNew.Z).Magnitude
+    local dy = displacementNew.Y
+    local g = gravity
+    local v = bulletSpeed
+
+    local root = v^4 - g * (g * dx^2 + 2 * dy * v^2)
+
+    if root < 0 then
+        return predictedTargetPos -- fallback: just aim ahead
+    end
+
+    local angle = math.atan((v^2 - math.sqrt(root)) / (g * dx))
+    local time = dx / (v * math.cos(angle))
+
+    return targetPos + targetVel * time - Vector3.new(0, 0.5 * g * time * time, 0)
+end
+
 local function getOptimalAimPoint(target)
-    if not isValidTarget(target) then
-        return nil
-    end
-    
-    local hrp = target.Character.HumanoidRootPart
+    if not isValidTarget(target) then return nil end
+
+    local hrp = target.Character:FindFirstChild("HumanoidRootPart")
     local head = target.Character:FindFirstChild("Head")
-    
-    local velocity = getEnhancedVelocity(target)
-    local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
+    if not hrp then return nil end
+
+    local shooterPos = Camera.CFrame.Position
     local bulletSpeed = getCurrentBulletSpeed()
-    
-    local targetPart = hrp -- Default to body center
-    local aimOffset = Vector3.new(0, 0, 0)
-    
-    if head then
-        if distance < 150 then
-            targetPart = head
-        elseif distance < 350 then
-            targetPart = hrp
-            aimOffset = Vector3.new(0, 1.0, 0) -- Chest level
-        else
-            targetPart = hrp
-            aimOffset = Vector3.new(0, 0.5, 0) -- Slightly above center
-        end
+    local gravity = workspace.Gravity
+    local velocity = getEnhancedVelocity(target)
+
+    local aimPart = hrp
+    local distance = (shooterPos - hrp.Position).Magnitude
+
+    if head and distance < 150 then
+        aimPart = head
     end
-    
-    local predictedPos = getPredictedPosition(targetPart, velocity, distance, bulletSpeed)
-    
-    predictedPos = predictedPos + aimOffset
-    
-    if distance > 450 and velocity.Magnitude > 8 then
-        local extraLead = velocity.Unit * (distance / bulletSpeed) * 0.15
-        predictedPos = predictedPos + extraLead
-    end
-    
-    return predictedPos
+
+    return solveBallisticArc(shooterPos, aimPart.Position, velocity, bulletSpeed, gravity)
 end
 
 local function smoothLook(targetPos)
     local camPos = Camera.CFrame.Position
+    local currentLook = Camera.CFrame.LookVector
+    local desiredLook = (targetPos - camPos).Unit
+    local angleDiff = math.acos(math.clamp(currentLook:Dot(desiredLook), -1, 1))
+
+    local lerpAlpha = math.clamp(angleDiff / math.rad(45), 0.1, 1) * AimbotSmoothness
+
     if useLerp then
-        local currentLook = Camera.CFrame.LookVector
-        local desiredLook = (targetPos - camPos).Unit
-        local lerpedLook = currentLook:Lerp(desiredLook, AimbotSmoothness)
+        local lerpedLook = currentLook:Lerp(desiredLook, lerpAlpha)
         Camera.CFrame = CFrame.new(camPos, camPos + lerpedLook)
     else
         Camera.CFrame = CFrame.new(camPos, targetPos)
