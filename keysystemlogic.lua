@@ -1,8 +1,29 @@
--- Block script from running in unsupported games
-local allowedPlaceId = 3678761576 -- 🔁 Replace with your game's real PlaceId
+local allowedPlaceId = 1234567890 -- 🔁 Replace with your real game ID
 if game.PlaceId ~= allowedPlaceId then
-	warn("🚫 This script is not supported in this game.")
-	return {}
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "KeySystemBlockedGui"
+    gui.ResetOnSpawn = false
+    gui.IgnoreGuiInset = true
+    gui.DisplayOrder = 999
+    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    gui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0.6, 0, 0.2, 0)
+    frame.Position = UDim2.new(0.2, 0, 0.4, 0)
+    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    frame.BorderSizePixel = 0
+    frame.Parent = gui
+
+    local text = Instance.new("TextLabel")
+    text.Size = UDim2.new(1, 0, 1, 0)
+    text.BackgroundTransparency = 1
+    text.Text = "🚫 This game is not supported by this script."
+    text.TextColor3 = Color3.new(1, 1, 1)
+    text.TextScaled = true
+    text.Font = Enum.Font.SourceSansBold
+    text.Parent = frame
+    return {}
 end
 
 local KeySystem = {}
