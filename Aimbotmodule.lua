@@ -218,21 +218,35 @@ local function getPredictedPosition(targetPart, targetVelocity, distance, bullet
 
 	if discriminant < 0 or math.abs(a) < 1e-6 then
 		local time = toTarget.Magnitude / bulletSpeed
-		return targetPart.Position + targetVelocity * time
+		local latencyCompensation = math.clamp(time * 0.4, 0.05, 0.3)
+		return targetPart.Position + targetVelocity * (time + latencyCompensation)
 	end
 
 	local sqrtDisc = math.sqrt(discriminant)
 	local t1 = (-b - sqrtDisc) / (2 * a)
 	local t2 = (-b + sqrtDisc) / (2 * a)
 
-	local hitTime = math.min(t1, t2)
-	if hitTime < 0 then
-		hitTime = math.max(t1, t2)
-		if hitTime < 0 then return targetPart.Position end
+	local hitTime = math.huge
+	if t1 > 0 and t2 > 0 then
+		hitTime = math.min(t1, t2)
+	elseif t1 > 0 then
+		hitTime = t1
+	elseif t2 > 0 then
+		hitTime = t2
+	else
+		hitTime = nil
 	end
 
-	local predicted = targetPart.Position + targetVelocity * hitTime
-	predicted += targetVelocity * 0.05 -- account for latency
+	if not hitTime then
+		return targetPart.Position
+	end
+
+	local leadFactor = 1.1
+	local predicted = targetPart.Position + targetVelocity * hitTime * leadFactor
+
+	local latencyCompensation = math.clamp(hitTime * 0.4, 0.05, 0.3)
+	predicted = predicted + targetVelocity * latencyCompensation
+
 	local drop = calculateBulletDrop(distance, bulletSpeed)
 	return predicted - Vector3.new(0, drop, 0)
 end
@@ -254,10 +268,11 @@ local function getOptimalAimPoint(target)
 	elseif distance < 350 then
 		aimOffset = Vector3.new(0, 1.0, 0)
 	else
-		aimOffset = Vector3.new(0, 0.7, 0)
+		aimOffset = Vector3.new(0, 0.5, 0)
 	end
 
 	local predicted = getPredictedPosition(targetPart, velocity, distance, bulletSpeed)
+
 	return predicted + aimOffset
 end
 
@@ -272,7 +287,6 @@ local function smoothLook(targetPos)
 	end
 end
 
--- Public API
 function AimbotModule.setSmooth(state)
 	useLerp = state
 end
