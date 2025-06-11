@@ -10,6 +10,8 @@ local RunService = game:GetService("RunService")
 local IgnoreNames = {
     "Horse",
     "Unicorn",
+    "Model_TurretSoldier",
+    "Model_RifleSoldier",
 }
 
 -- Check if the model is a player
