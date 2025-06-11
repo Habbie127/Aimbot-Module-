@@ -5,23 +5,23 @@ local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
+-- Settings
 local enabled = false
 local showName = true
 local showDistance = true
 local showHighlight = true
+local whitelist = {"Model_RifleSoldier", "Zombie", "Boss"} -- Only show ESP for these NPC names
 
-local espFolder = Instance.new("Folder", Workspace)
+-- Constant ESP Color
+local ESP_COLOR = Color3.fromRGB(0, 255, 0) -- Green
+
+-- ESP container
+local espFolder = Instance.new("Folder")
 espFolder.Name = "NPC_ESP"
+espFolder.Parent = Workspace
 
-local function getAllNPCs()
-    local npcs = {}
-    for _, model in ipairs(Workspace:GetDescendants()) do
-        if model:IsA("Model") and model:FindFirstChild("HumanoidRootPart") and model:FindFirstChild("Humanoid") then
-            table.insert(npcs, model)
-        end
-    end
-    return npcs
-end
+-- Track created ESPs
+local createdESP = {}
 
 function ESPModule.SetSettings(opts)
     enabled = opts.Enabled
@@ -31,60 +31,89 @@ function ESPModule.SetSettings(opts)
 end
 
 local function clearESP()
-    for _, child in ipairs(espFolder:GetChildren()) do
-        child:Destroy()
+    for _, gui in pairs(espFolder:GetChildren()) do
+        gui:Destroy()
     end
+    createdESP = {}
 end
 
-local function createESP(npc)
-    local uid = npc:GetDebugId()
-    if espFolder:FindFirstChild(uid) then return end
-
-    local highlight
-    if showHighlight then
-        highlight = Instance.new("Highlight", espFolder)
-        highlight.Adornee = npc
-        highlight.Name = uid
-        highlight.FillColor = Color3.new(1, 1, 0)
-        highlight.FillTransparency = 0.5
-    end
-
-    if showName or showDistance then
-        local hrp = npc:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            local billboard = Instance.new("BillboardGui", espFolder)
-            billboard.Name = uid
-            billboard.Adornee = hrp
-            billboard.AlwaysOnTop = true
-            billboard.Size = UDim2.new(0, 100, 0, 40)
-            billboard.StudsOffset = Vector3.new(0, 3, 0)
-
-            local label = Instance.new("TextLabel", billboard)
-            label.Size = UDim2.new(1, 0, 1, 0)
-            label.BackgroundTransparency = 1
-            label.TextColor3 = Color3.new(1, 1, 1)
-            label.Font = Enum.Font.SourceSansBold
-            label.TextScaled = true
-
-            RunService.RenderStepped:Connect(function()
-                if LocalPlayer.Character and hrp and hrp.Parent then
-                    local dist = (hrp.Position - LocalPlayer.Character:FindFirstChild("HumanoidRootPart").Position).Magnitude
-                    label.Text = (showName and npc.Name or "") .. (showDistance and (" [" .. math.floor(dist) .. "m]") or "")
-                end
-            end)
+local function isWhitelisted(name)
+    for _, allowed in ipairs(whitelist) do
+        if name:lower():match(allowed:lower()) then
+            return true
         end
     end
+    return false
 end
 
-RunService.RenderStepped:Connect(function()
+local function updateESP()
     if not enabled then
         clearESP()
         return
     end
 
-    for _, npc in ipairs(getAllNPCs()) do
-        createESP(npc)
+    for _, npc in ipairs(Workspace:GetDescendants()) do
+        if npc:IsA("Model") and npc:FindFirstChild("HumanoidRootPart") and npc:FindFirstChild("Humanoid") and npc ~= LocalPlayer.Character then
+            if not isWhitelisted(npc.Name) then continue end
+
+            if not createdESP[npc] then
+                local hrp = npc.HumanoidRootPart
+
+                -- Billboard GUI
+                local billboard = Instance.new("BillboardGui")
+                billboard.Name = npc.Name .. "_ESP"
+                billboard.Adornee = hrp
+                billboard.AlwaysOnTop = true
+                billboard.Size = UDim2.new(0, 100, 0, 40)
+                billboard.StudsOffset = Vector3.new(0, 3, 0)
+                billboard.Parent = espFolder
+
+                local label = Instance.new("TextLabel", billboard)
+                label.Size = UDim2.new(1, 0, 1, 0)
+                label.BackgroundTransparency = 1
+                label.TextColor3 = Color3.new(1, 1, 1)
+                label.Font = Enum.Font.SourceSansBold
+                label.TextScaled = true
+
+                -- Highlight
+                local highlight
+                if showHighlight then
+                    highlight = Instance.new("Highlight")
+                    highlight.Name = npc.Name .. "_Highlight"
+                    highlight.Adornee = npc
+                    highlight.FillColor = ESP_COLOR
+                    highlight.FillTransparency = 0.5
+                    highlight.OutlineTransparency = 1
+                    highlight.Parent = espFolder
+                end
+
+                createdESP[npc] = {
+                    Billboard = billboard,
+                    Label = label,
+                    Highlight = highlight
+                }
+            end
+        end
     end
+
+    -- Update labels and remove invalid NPCs
+    for npc, data in pairs(createdESP) do
+        if npc and npc.Parent and npc:FindFirstChild("HumanoidRootPart") and npc:FindFirstChild("Humanoid").Health > 0 then
+            local hrp = npc.HumanoidRootPart
+            local dist = (hrp.Position - LocalPlayer.Character:FindFirstChild("HumanoidRootPart").Position).Magnitude
+            local nameText = showName and npc.Name or ""
+            local distText = showDistance and (" [" .. math.floor(dist) .. "m]") or ""
+            data.Label.Text = nameText .. distText
+        else
+            if data.Billboard then data.Billboard:Destroy() end
+            if data.Highlight then data.Highlight:Destroy() end
+            createdESP[npc] = nil
+        end
+    end
+end
+
+RunService.RenderStepped:Connect(function()
+    pcall(updateESP)
 end)
 
 return ESPModule
