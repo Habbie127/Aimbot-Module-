@@ -128,7 +128,7 @@ local function getClosestEnemyFOV()
 end
 
 local WeaponBulletSpeeds = {
-    ["Lewis Gun"] = 3300, ["Madsen 1905"] = 3400, ["CSRG 1915"] = 3450,
+	["Lewis Gun"] = 3300, ["Madsen 1905"] = 3400, ["CSRG 1915"] = 3450,
     ["Doppelpistole 1912"] = 2400, ["Gewehr 98"] = 4200, ["Beholla 1915"] = 2200,
     ["Farquhar Hill P08"] = 3500, ["Karabiner 98AZ"] = 3600, ["Mannlicher 1895"] = 4200,
     ["MG 15na"] = 3225, ["MP18,-I"] = 1300, ["Selbstlader 1906"] = 3600,
@@ -254,7 +254,7 @@ local function getOptimalAimPoint(target)
 	elseif distance < 350 then
 		aimOffset = Vector3.new(0, 1.0, 0)
 	else
-		aimOffset = Vector3.new(0, 0.5, 0)
+		aimOffset = Vector3.new(0, 0.7, 0)
 	end
 
 	local predicted = getPredictedPosition(targetPart, velocity, distance, bulletSpeed)
