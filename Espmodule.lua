@@ -24,15 +24,17 @@ local espNameConnection = nil
 local espLabels = {} -- Combined storage for all text labels per player
 
 local function createHighlight(player)
-    local highlight = Instance.new("Highlight")
-    highlight.Name = "ESP_Highlight"
-    highlight.Adornee = player.Character
-    highlight.FillColor = ESPColor
-    highlight.OutlineColor = ESPColor
-    highlight.FillTransparency = 0.5
-    highlight.OutlineTransparency = 0
-    highlight.Parent = player.Character
-    espHighlights[player] = highlight
+    if player.Character then
+        local highlight = Instance.new("Highlight")
+        highlight.Name = "ESP_Highlight"
+        highlight.Adornee = player.Character
+        highlight.FillColor = ESPColor
+        highlight.OutlineColor = ESPColor
+        highlight.FillTransparency = 0.5
+        highlight.OutlineTransparency = 0
+        highlight.Parent = player.Character
+        espHighlights[player] = highlight
+    end
 end
 
 local function removeHighlight(player)
@@ -44,11 +46,10 @@ end
 
 local function updateESP()
     for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Team ~= LocalPlayer.Team and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") then
-            local humanoid = player.Character.Humanoid
-            local distance = (LocalPlayer.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
-            
-            if humanoid.Health > 0 then
+        if player ~= LocalPlayer and player.Team ~= LocalPlayer.Team and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local humanoid = player.Character:FindFirstChildWhichIsA("Humanoid")
+            if humanoid and humanoid.Health > 0 then
+                local distance = (LocalPlayer.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
                 if distance <= highlightDistance then
                     if not espHighlights[player] then
                         createHighlight(player)
@@ -57,6 +58,7 @@ local function updateESP()
                     removeHighlight(player)
                 end
             else
+                -- Humanoid is nil or dead, remove highlight
                 removeHighlight(player)
             end
         else
@@ -85,7 +87,7 @@ local function createTextLabels(player)
     if not espLabels[player].health then
         local healthText = Drawing.new("Text")
         healthText.Size = 12
-        healthText.Color = Color3.new(0, 1, 0)
+        healthText.Color = Color3.new(0, 255, 0)
         healthText.Font = 2
         healthText.Outline = true
         healthText.OutlineColor = Color3.new(0, 0, 0)
@@ -97,7 +99,7 @@ local function createTextLabels(player)
     if not espLabels[player].name then
         local nameText = Drawing.new("Text")
         nameText.Size = 12
-        nameText.Color = Color3.new(1, 1, 0)
+        nameText.Color = Color3.new(0, 1, 0)
         nameText.Font = 2
         nameText.Outline = true
         nameText.OutlineColor = Color3.new(0, 0, 0)
@@ -127,12 +129,12 @@ end
 
 local function updateTextESP()
     for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Team ~= LocalPlayer.Team and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Head") and player.Character:FindFirstChild("Humanoid") then
-            local humanoid = player.Character.Humanoid
+        if player ~= LocalPlayer and player.Team ~= LocalPlayer.Team and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Head") then
+            local humanoid = player.Character:FindFirstChildWhichIsA("Humanoid")
             local head = player.Character.Head
-            local distance = (LocalPlayer.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
-            
-            if humanoid.Health > 0 then
+            if humanoid and humanoid.Health > 0 then
+                local distance = (LocalPlayer.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
+
                 createTextLabels(player)
                 
                 local headPos, onScreen = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 2, 0))
@@ -143,9 +145,8 @@ local function updateTextESP()
                     if espNameEnabled then
                         espLabels[player].name.Text = player.Name
                         espLabels[player].name.Position = Vector2.new(headPos.X, headPos.Y)
-                        espLabels[player].name.Size = baseSize -- Fixed size
+                        espLabels[player].name.Size = baseSize 
                         espLabels[player].name.Visible = true
-                        espLabels[player].name.Color = Color3.new(1, 1, 0) -- Yellow
                     else
                         espLabels[player].name.Visible = false
                     end
@@ -154,17 +155,17 @@ local function updateTextESP()
                         local health = math.floor(humanoid.Health)
                         local maxHealth = math.floor(humanoid.MaxHealth)
                         espLabels[player].health.Text = health .. "/" .. maxHealth
-                        espLabels[player].health.Position = Vector2.new(headPos.X, headPos.Y - 13) -- 20 pixels above name
-                        espLabels[player].health.Size = baseSize -- Fixed size
+                        espLabels[player].health.Position = Vector2.new(headPos.X, headPos.Y - 13)
+                        espLabels[player].health.Size = baseSize 
                         espLabels[player].health.Visible = true
                         
                         local healthPercent = health / maxHealth
                         if healthPercent > 0.6 then
-                            espLabels[player].health.Color = Color3.new(0, 1, 0) -- Green
+                            espLabels[player].health.Color = Color3.new(0, 1, 0)
                         elseif healthPercent > 0.3 then
-                            espLabels[player].health.Color = Color3.new(1, 1, 0) -- Yellow
+                            espLabels[player].health.Color = Color3.new(1, 1, 0)
                         else
-                            espLabels[player].health.Color = Color3.new(1, 0, 0) -- Red
+                            espLabels[player].health.Color = Color3.new(1, 0, 0)
                         end
                     else
                         espLabels[player].health.Visible = false
@@ -173,16 +174,16 @@ local function updateTextESP()
                     if espDistanceEnabled and distance > distanceThreshold then
                         local distanceRounded = math.floor(distance)
                         espLabels[player].distance.Text = distanceRounded .. "m"
-                        espLabels[player].distance.Position = Vector2.new(headPos.X, headPos.Y - 26) -- 40 pixels above name (20 above health)
-                        espLabels[player].distance.Size = baseSize -- Fixed size
+                        espLabels[player].distance.Position = Vector2.new(headPos.X, headPos.Y - 26)
+                        espLabels[player].distance.Size = baseSize 
                         espLabels[player].distance.Visible = true
                         
                         if distance > 200 then
-                            espLabels[player].distance.Color = Color3.new(1, 0, 0) -- Red
+                            espLabels[player].distance.Color = Color3.new(1, 0, 0)
                         elseif distance > 100 then
-                            espLabels[player].distance.Color = Color3.new(1, 1, 0) -- Yellow
+                            espLabels[player].distance.Color = Color3.new(1, 1, 0)
                         else
-                            espLabels[player].distance.Color = Color3.new(0, 1, 0) -- Green
+                            espLabels[player].distance.Color = Color3.new(0, 1, 0)
                         end
                     else
                         espLabels[player].distance.Visible = false
@@ -214,10 +215,7 @@ function ESPModule.toggleESP(state)
     else
         if espConnection then espConnection:Disconnect() end
         for player, _ in pairs(espHighlights) do
-            if espHighlights[player] then
-                espHighlights[player]:Destroy()
-                espHighlights[player] = nil
-            end
+            removeHighlight(player)
         end
     end
 end
