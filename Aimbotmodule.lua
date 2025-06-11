@@ -46,7 +46,6 @@ local function isBush(part)
 	local bushNames = {
 		["Bush"] = true,
 		["BushLeave"] = true,
-		["Leaves"] = true,
 		["Bushes"] = true
 	}
 	return bushNames[part.Name] == true or (part.Parent and bushNames[part.Parent.Name] == true)
@@ -129,9 +128,17 @@ local function getClosestEnemyFOV()
 end
 
 local WeaponBulletSpeeds = {
-	["Lewis Gun"] = 3300, ["Gewehr 98"] = 4200, ["Mosin 1891"] = 4200, ["MP18,-I"] = 1300,
-	["Luger P08"] = 2250, ["RSC 1917"] = 3600, ["Berthier 1892/16"] = 3600,
-	["Enfield P1914"] = 4200, ["Mannlicher 1895"] = 4200, ["Huot Automatic Rifle"] = 2700
+    ["Lewis Gun"] = 3300, ["Madsen 1905"] = 3400, ["CSRG 1915"] = 3450,
+    ["Doppelpistole 1912"] = 2400, ["Gewehr 98"] = 4200, ["Beholla 1915"] = 2200,
+    ["Farquhar Hill P08"] = 3500, ["Karabiner 98AZ"] = 3600, ["Mannlicher 1895"] = 4200,
+    ["MG 15na"] = 3225, ["MP18,-I"] = 1300, ["Selbstlader 1906"] = 3600,
+    ["RSC 1917"] = 3600, ["Ribeyrolles 1918"] = 2600, ["Lebel 1886/93"] = 3900, 
+    ["Enfield P1914"] = 4200, ["Mosin 1891"] = 4200, ["Mannlicher 1895 Stutzen"] = 3600, 
+    ["Berthier 1892/16"] = 3600, ["SMLE Mk III"] = 3500, ["MP18,-I"] = 2600, 
+    ["Steyr Hahn 1912"] = 2250, ["Huot Automatic Rifle"] = 2700, ["Fedorov Avtomat"] = 2600, 
+    ["Repetierpistole 1912/16"] = 2250, ["Mauser 1914"] = 2200, ["Ruby 1915"] = 2200, 
+    ["Webley & Scott 1913"] = 2200, ["Frommer Stop 1912"] = 2200, ["Mannlicher 1895 Scoped"] = 3900, 
+    ["Enfield P1914 Scoped"] = 4200, ["Luger P08"] = 2250, ["St. Etienne 1892"] = 2400, 
 }
 
 local function getCurrentBulletSpeed()
