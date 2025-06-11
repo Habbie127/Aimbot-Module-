@@ -1,0 +1,88 @@
+local AimbotModule = {}
+
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local Camera = Workspace.CurrentCamera
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+local enabled = false
+local useFOV = false
+local fovRadius = 60 -- fixed radius
+local maxDistance = 300 -- adjustable by dropdown
+local visibilityCheck = true
+local targetMode = "Nearest"
+
+local ignoreNames = {"Horse", "Unicorn", "Model_TurretSoldier", "Model_RifleSoldier"}
+
+function AimbotModule.SetSettings(opts)
+    enabled = opts.Enabled
+    useFOV = opts.UseFOV
+    visibilityCheck = opts.VisibilityCheck
+    targetMode = opts.Mode or "Nearest"
+    maxDistance = opts.MaxDistance or 300
+end
+
+local function isVisible(part)
+    if not visibilityCheck then return true end
+    local origin = Camera.CFrame.Position
+    local direction = (part.Position - origin)
+    local result = Workspace:Raycast(origin, direction, RaycastParams.new())
+    return result and result.Instance:IsDescendantOf(part.Parent)
+end
+
+local function isOnScreen(part)
+    local _, onScreen = Camera:WorldToViewportPoint(part.Position)
+    return onScreen
+end
+
+local function getAllNPCs()
+    local results = {}
+    for _, model in ipairs(Workspace:GetDescendants()) do
+        if model:IsA("Model") and model:FindFirstChild("HumanoidRootPart") and model:FindFirstChild("Humanoid") then
+            if not table.find(ignoreNames, model.Name) then
+                table.insert(results, model)
+            end
+        end
+    end
+    return results
+end
+
+local function getTarget()
+    local closest, shortest = nil, math.huge
+    local origin = Camera.CFrame.Position
+
+    for _, npc in ipairs(getAllNPCs()) do
+        local hrp = npc:FindFirstChild("HumanoidRootPart")
+        if hrp and isVisible(hrp) and isOnScreen(hrp) then
+            local dist = (hrp.Position - origin).Magnitude
+            if dist <= maxDistance then
+                if targetMode == "Nearest" then
+                    if dist < shortest then
+                        closest = npc
+                        shortest = dist
+                    end
+                elseif targetMode == "FOV" then
+                    local screenPos = Camera:WorldToViewportPoint(hrp.Position)
+                    local fovDist = (screenPos - Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)).Magnitude
+                    if fovDist <= fovRadius and fovDist < shortest then
+                        closest = npc
+                        shortest = fovDist
+                    end
+                end
+            end
+        end
+    end
+
+    return closest
+end
+
+RunService.RenderStepped:Connect(function()
+    if not enabled then return end
+    local target = getTarget()
+    if target and target:FindFirstChild("HumanoidRootPart") then
+        Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.HumanoidRootPart.Position)
+    end
+end)
+
+return AimbotModule
