@@ -1,119 +1,92 @@
+-- ESPModule.lua
 local ESPModule = {}
 
 local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
 
--- Settings
-local enabled = false
-local showName = true
-local showDistance = true
-local showHighlight = true
-local whitelist = {"Model_RifleSoldier", "Zombie", "Boss"} -- Only show ESP for these NPC names
+local ESPFolder = Instance.new("Folder", workspace)
+ESPFolder.Name = "ESP_Objects"
 
--- Constant ESP Color
-local ESP_COLOR = Color3.fromRGB(0, 255, 0) -- Green
+local settings = {
+    Highlight = false,
+    Name = false,
+    Distance = false,
+    MaxDistance = 300
+}
 
--- ESP container
-local espFolder = Instance.new("Folder")
-espFolder.Name = "NPC_ESP"
-espFolder.Parent = Workspace
+local function createBillboard(name, distance)
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "ESP_Billboard"
+    billboard.Size = UDim2.new(0, 200, 0, 50)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.AlwaysOnTop = true
 
--- Track created ESPs
-local createdESP = {}
+    local label = Instance.new("TextLabel", billboard)
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.TextScaled = true
+    label.BackgroundTransparency = 1
+    label.TextColor3 = Color3.new(1, 1, 1)
+    label.TextStrokeTransparency = 0.5
+    label.Font = Enum.Font.SourceSansBold
+    label.Text = name .. (settings.Distance and (" | " .. math.floor(distance) .. "m") or "")
 
-function ESPModule.SetSettings(opts)
-    enabled = opts.Enabled
-    showName = opts.Name
-    showDistance = opts.Distance
-    showHighlight = opts.Highlight
-end
-
-local function clearESP()
-    for _, gui in pairs(espFolder:GetChildren()) do
-        gui:Destroy()
-    end
-    createdESP = {}
-end
-
-local function isWhitelisted(name)
-    for _, allowed in ipairs(whitelist) do
-        if name:lower():match(allowed:lower()) then
-            return true
-        end
-    end
-    return false
+    return billboard
 end
 
 local function updateESP()
-    if not enabled then
-        clearESP()
-        return
+    for _, v in pairs(ESPFolder:GetChildren()) do
+        v:Destroy()
     end
 
-    for _, npc in ipairs(Workspace:GetDescendants()) do
-        if npc:IsA("Model") and npc:FindFirstChild("HumanoidRootPart") and npc:FindFirstChild("Humanoid") and npc ~= LocalPlayer.Character then
-            if not isWhitelisted(npc.Name) then continue end
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local rootPart = player.Character.HumanoidRootPart
+            local distance = (Camera.CFrame.Position - rootPart.Position).Magnitude
 
-            if not createdESP[npc] then
-                local hrp = npc.HumanoidRootPart
+            if distance <= settings.MaxDistance then
+                local container = Instance.new("Folder", ESPFolder)
+                container.Name = player.Name .. "_ESP"
 
-                -- Billboard GUI
-                local billboard = Instance.new("BillboardGui")
-                billboard.Name = npc.Name .. "_ESP"
-                billboard.Adornee = hrp
-                billboard.AlwaysOnTop = true
-                billboard.Size = UDim2.new(0, 100, 0, 40)
-                billboard.StudsOffset = Vector3.new(0, 3, 0)
-                billboard.Parent = espFolder
-
-                local label = Instance.new("TextLabel", billboard)
-                label.Size = UDim2.new(1, 0, 1, 0)
-                label.BackgroundTransparency = 1
-                label.TextColor3 = Color3.new(1, 1, 1)
-                label.Font = Enum.Font.SourceSansBold
-                label.TextScaled = true
-
-                -- Highlight
-                local highlight
-                if showHighlight then
-                    highlight = Instance.new("Highlight")
-                    highlight.Name = npc.Name .. "_Highlight"
-                    highlight.Adornee = npc
-                    highlight.FillColor = ESP_COLOR
+                if settings.Highlight then
+                    local highlight = Instance.new("Highlight")
+                    highlight.Adornee = player.Character
+                    highlight.FillColor = Color3.fromRGB(0, 255, 0)
+                    highlight.OutlineColor = Color3.new(0, 0, 0)
                     highlight.FillTransparency = 0.5
-                    highlight.OutlineTransparency = 1
-                    highlight.Parent = espFolder
+                    highlight.OutlineTransparency = 0
+                    highlight.Parent = container
                 end
 
-                createdESP[npc] = {
-                    Billboard = billboard,
-                    Label = label,
-                    Highlight = highlight
-                }
+                if settings.Name or settings.Distance then
+                    local tag = createBillboard(player.Name, distance)
+                    tag.Adornee = rootPart
+                    tag.Parent = container
+                end
             end
-        end
-    end
-
-    -- Update labels and remove invalid NPCs
-    for npc, data in pairs(createdESP) do
-        if npc and npc.Parent and npc:FindFirstChild("HumanoidRootPart") and npc:FindFirstChild("Humanoid").Health > 0 then
-            local hrp = npc.HumanoidRootPart
-            local dist = (hrp.Position - LocalPlayer.Character:FindFirstChild("HumanoidRootPart").Position).Magnitude
-            local nameText = showName and npc.Name or ""
-            local distText = showDistance and (" [" .. math.floor(dist) .. "m]") or ""
-            data.Label.Text = nameText .. distText
-        else
-            if data.Billboard then data.Billboard:Destroy() end
-            if data.Highlight then data.Highlight:Destroy() end
-            createdESP[npc] = nil
         end
     end
 end
 
-RunService.RenderStepped:Connect(function()
-    pcall(updateESP)
-end)
+function ESPModule.SetSettings(newSettings)
+    for k, v in pairs(newSettings) do
+        if settings[k] ~= nil then
+            settings[k] = v
+        end
+    end
+end
+
+function ESPModule.Enable()
+    ESPModule.Connection = RunService.RenderStepped:Connect(updateESP)
+end
+
+function ESPModule.Disable()
+    if ESPModule.Connection then
+        ESPModule.Connection:Disconnect()
+        ESPModule.Connection = nil
+    end
+    ESPFolder:ClearAllChildren()
+end
 
 return ESPModule
