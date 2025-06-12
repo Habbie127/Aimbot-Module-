@@ -16,7 +16,7 @@ end
 
 local function createBillboard(object, name, color)
     if espFolder:FindFirstChild(name .. "_" .. object:GetDebugId()) then return end
-    local adornee = object:IsA("Model") and object:FindFirstChild("HumanoidRootPart") or object
+    local adornee = object:IsA("Model") and (object.PrimaryPart or object:FindFirstChild("HumanoidRootPart")) or object
     if not adornee then return end
 
     local highlight = Instance.new("Highlight")
@@ -46,7 +46,8 @@ local function createBillboard(object, name, color)
 
     RunService.RenderStepped:Connect(function()
         if Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and adornee then
-            local dist = math.floor((adornee.Position - Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude)
+            local position = adornee:IsA("Model") and adornee.PrimaryPart and adornee.PrimaryPart.Position or adornee.Position
+            local dist = math.floor((position - Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude)
             label.Text = name .. " [" .. dist .. "m]"
         end
     end)
@@ -62,7 +63,7 @@ function ESPModule.tagItems(keywordList, color, displayName)
             local name = obj.Name:lower()
             for _, keyword in ipairs(keywordList) do
                 if name:find(keyword:lower()) then
-                    ESPModule.createESP(obj, displayName or obj.Name, color)
+                    ESPModule.createESP(obj, obj.Name, color)
                     break
                 end
             end
