@@ -45,7 +45,7 @@ local function createBillboard(object, name, color)
     label.TextColor3 = Color3.new(1, 1, 1)
     label.TextStrokeTransparency = 0
     label.TextScaled = true
-    label.Font = Enum.Font.SourceSansBold
+    label.Font = Enum.Font.Garamond
     label.Text = name
 
     RunService.RenderStepped:Connect(function()
@@ -66,6 +66,7 @@ function ESPModule.tagItems(keywordList, color)
             local name = obj.Name:lower()
             for _, keyword in ipairs(keywordList) do
                 if name:find(keyword:lower()) then
+                    print("Tagging item: " .. obj.Name) -- Debugging line
                     ESPModule.createESP(obj, obj.Name, color) -- Use obj.Name directly
                     break
                 end
@@ -87,46 +88,46 @@ ESPModule.scanValuables = function()
     ESPModule.tagItems({"GoldBar", "BrainInJar", "GoldCup", 
     "GoldNugget", "GoldPainting", "GoldPlate", "GoldStatue", "GoldWatch", 
     "SilverPlate", "SilverStatue", "SilverWatch", "StoneStatue", "StrangeMask", 
-    "MoneyBag", "SilverBar", "SilverCup", "SilverNugget", "SilverPainting", 
-    "WoodenPainting", "Fool'sGold"}, Color3.fromRGB(255, 215, 0))
+    "MoneyBag", "SilverBar", "Silver Cup", "SilverNugget", "SilverPainting", 
+    "WoodenPainting", "Fool'sGold"}, Color3.fromRGB(255, 215, 0), "Valuable")
 end
 
 ESPModule.scanJunk = function()
     ESPModule.tagItems({"Barrel", "Book", "Chair", "Newspaper", 
     "Rope", "Teapot", "Vase", "Wheel", "Tumbleweed", "StrangeMachine", 
-    "Coal", "WantedPoster"}, Color3.fromRGB(150, 150, 150))
+    "Coal", "WantedPoster"}, Color3.fromRGB(150, 150, 150), "Junk")
 end
 
 ESPModule.scanTools = function()
     ESPModule.tagItems({"Banjo", "Bandage", "BarbedWire", 
     "Camera", "Lantern", "MiningHelmet", "LightningRod", "SheetMetal", "SnakeOil", 
-    "Saddle", "HorseCart", "Torch", "GlassBottle"}, Color3.fromRGB(0, 255, 255))
+    "Saddle", "HorseCart", "Torch", "GlassBottle"}, Color3.fromRGB(0, 255, 255), "Tool")
 end
 
 ESPModule.scanPuzzle = function()
     ESPModule.tagItems({"BrainJar", "WerewolfLimb", "JadeTablet", 
     "Notes", "BankNote", "RippedBankNote", "SupplyDepotKey", 
-    "StrangeMachine", "Fool'sKey", "Crate"}, Color3.fromRGB(180, 0, 255))
+    "StrangeMachine", "Fool'sKey", "Crate"}, Color3.fromRGB(180, 0, 255), "Puzzle")
 end
 
 ESPModule.scanGuns = function()
     ESPModule.tagItems({"Revolver", "Shotgun", "Rifle", "NavyRevolver", "Mauser", 
-    "Electrocutioner", "SawedOffShotgun", "Blunderbuss", "BoltActionRifle", 
-    "ElephantRifle", "Crossbow", "MaximGun", "Cannon", "Ballista"}, Color3.fromRGB(255, 0, 0))
+    "Electrocutioner", "Sawed-OffShotgun", "Blunderbuss", "Bolt-ActionRifle", 
+    "ElephantRifle", "Crossbow", "MaximGun", "Cannon", "Ballista"}, Color3.fromRGB(255, 0, 0), "Gun")
 end
 
 ESPModule.scanUtilityWeapons = function()
     ESPModule.tagItems({"Molotov", "Dynamite", "HolyWater", 
-    "Crucifix", "BearTrap", "GunpowderBarrel", "Landmine"}, Color3.fromRGB(255, 120, 0))
+    "Crucifix", "BearTrap", "GunpowderBarrel", "Landmine"}, Color3.fromRGB(255, 120, 0), "Utility")
 end
 
 ESPModule.scanAmmo = function()
     ESPModule.tagItems({"Arrows", "BallistaBolts", "CannonBalls", "ShotgunShells", 
-    "TurretAmmo", "RifleAmmo", "RevolverAmmo"}, Color3.fromRGB(160, 82, 45))
+    "TurretAmmo", "RifleAmmo", "RevolverAmmo"}, Color3.fromRGB(160, 82, 45), "Ammo")
 end
 
 ESPModule.scanMelee = function()
-    ESPModule.tagItems({"CavalrySword", "JadeSword", "VampireKnife", "Excalibur", "Pickaxe", "Tomahawk"}, Color3.fromRGB(0, 255, 0))
+    ESPModule.tagItems({"CavalrySword", "JadeSword", "VampireKnife", "Excalibur", "Pickaxe", "Tomahawk"}, Color3.fromRGB(0, 255, 0), "Melee")
 end
 
 return ESPModule
