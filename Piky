@@ -17,7 +17,7 @@ end
 local function createBillboard(object, name, color)
     if espFolder:FindFirstChild(name .. "_" .. object:GetDebugId()) then return end
     local adornee = object:IsA("Model") and (object.PrimaryPart or object:FindFirstChild("HumanoidRootPart")) or object
-    if not adornee then return end
+    if adornee and adornee:IsA("BasePart") then
 
     local highlight = Instance.new("Highlight")
     highlight.Name = name .. "_" .. object:GetDebugId()
@@ -59,11 +59,11 @@ end
 
 function ESPModule.tagItems(keywordList, color, displayName)
     for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("Model") or obj:IsA("BasePart") then
+        if (obj:IsA("Model") or obj:IsA("BasePart")) and not obj:IsA("Tool") then
             local name = obj.Name:lower()
             for _, keyword in ipairs(keywordList) do
                 if name:find(keyword:lower()) then
-                    ESPModule.createESP(obj, obj.Name, color) -- Use obj.Name instead of displayName
+                    ESPModule.createESP(obj, obj.Name, color)
                     break
                 end
             end
