@@ -32,6 +32,8 @@ local function createBillboard(object, name, color)
     highlight.OutlineTransparency = 0.2
     highlight.Parent = espFolder
 
+    print("Created highlight for:", name) -- Debugging line
+
     local billboard = Instance.new("BillboardGui", highlight)
     billboard.Name = "DistanceLabel"
     billboard.Size = UDim2.new(0, 100, 0, 40)
@@ -45,8 +47,10 @@ local function createBillboard(object, name, color)
     label.TextColor3 = Color3.new(1, 1, 1)
     label.TextStrokeTransparency = 0
     label.TextScaled = true
-    label.Font = Enum.Font.Garamond
+    label.Font = Enum.Font.SourceSansBold
     label.Text = name
+
+    print("Created billboard for:", name) -- Debugging line
 
     RunService.RenderStepped:Connect(function()
         if Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and adornee then
@@ -62,6 +66,7 @@ end
 
 function ESPModule.tagItems(keywordList, color)
     for _, obj in ipairs(Workspace:GetDescendants()) do
+        print("Checking object:", obj.Name, "Type:", obj.ClassName) -- Debugging line
         if obj:IsA("Model") or obj:IsA("BasePart") then
             local name = obj.Name:lower()
             for _, keyword in ipairs(keywordList) do
