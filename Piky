@@ -80,49 +80,49 @@ ESPModule.scanNPCs = function()
 end
 
 ESPModule.scanValuables = function()
-    ESPModule.tagItems({"Gold Bar", "Brain In Jar", "Gold Cup", 
-    "Gold Nugget", "Gold Painting", "Gold Plate", "Gold Statue", "Gold Watch", 
-    "Silver Plate", "Silver Statue", "Silver Watch", "Stone Statue", "Strange Mask", 
-    "Money Bag", "Silver Bar", "Silver Cup", "Silver Nugget", "Silver Painting", 
-    "Wooden Painting", "Fool's Gold"}, Color3.fromRGB(255, 215, 0), "Valuable")
+    ESPModule.tagItems({"GoldBar", "BrainInJar", "GoldCup", 
+    "GoldNugget", "GoldPainting", "GoldPlate", "GoldStatue", "GoldWatch", 
+    "SilverPlate", "SilverStatue", "SilverWatch", "StoneStatue", "StrangeMask", 
+    "MoneyBag", "SilverBar", "Silver Cup", "SilverNugget", "SilverPainting", 
+    "WoodenPainting", "Fool'sGold"}, Color3.fromRGB(255, 215, 0), "Valuable")
 end
 
 ESPModule.scanJunk = function()
     ESPModule.tagItems({"Barrel", "Book", "Chair", "Newspaper", 
-    "Rope", "Teapot", "Vase", "Wheel", "Tumbleweed", "Strange Machine", 
-    "Coal", "Wanted Poster"}, Color3.fromRGB(150, 150, 150), "Junk")
+    "Rope", "Teapot", "Vase", "Wheel", "Tumbleweed", "StrangeMachine", 
+    "Coal", "WantedPoster"}, Color3.fromRGB(150, 150, 150), "Junk")
 end
 
 ESPModule.scanTools = function()
-    ESPModule.tagItems({"Banjo", "Bandage", "Barbed Wire", 
-    "Camera", "Lantern", "Mining Helmet", "Lightning Rod", "Sheet Metal", "Snake Oil", 
-    "Saddle", "Horse Cart", "Torch", "Glass Bottle"}, Color3.fromRGB(0, 255, 255), "Tool")
+    ESPModule.tagItems({"Banjo", "Bandage", "BarbedWire", 
+    "Camera", "Lantern", "MiningHelmet", "LightningRod", "SheetMetal", "SnakeOil", 
+    "Saddle", "HorseCart", "Torch", "GlassBottle"}, Color3.fromRGB(0, 255, 255), "Tool")
 end
 
 ESPModule.scanPuzzle = function()
-    ESPModule.tagItems({"Brain Jar", "Werewolf Limb", "Jade Tablet", 
-    "Notes", "Bank Note", "Ripped Bank Note", "Supply Depot Key", 
-    "Strange Machine", "Fool's Key", "Crate"}, Color3.fromRGB(180, 0, 255), "Puzzle")
+    ESPModule.tagItems({"BrainJar", "WerewolfLimb", "JadeTablet", 
+    "Notes", "BankNote", "RippedBankNote", "SupplyDepotKey", 
+    "StrangeMachine", "Fool'sKey", "Crate"}, Color3.fromRGB(180, 0, 255), "Puzzle")
 end
 
 ESPModule.scanGuns = function()
-    ESPModule.tagItems({"Revolver", "Shotgun", "Rifle", "Navy Revolver", "Mauser", 
-    "Electrocutioner", "Sawed-Off Shotgun", "Blunderbuss", "Bolt-Action Rifle", 
-    "Elephant Rifle", "Crossbow", "Maxim Gun", "Cannon", "Ballista"}, Color3.fromRGB(255, 0, 0), "Gun")
+    ESPModule.tagItems({"Revolver", "Shotgun", "Rifle", "NavyRevolver", "Mauser", 
+    "Electrocutioner", "Sawed-OffShotgun", "Blunderbuss", "Bolt-ActionRifle", 
+    "ElephantRifle", "Crossbow", "MaximGun", "Cannon", "Ballista"}, Color3.fromRGB(255, 0, 0), "Gun")
 end
 
 ESPModule.scanUtilityWeapons = function()
-    ESPModule.tagItems({"Molotov", "Dynamite", "Holy Water", 
-    "Crucifix", "Bear Trap", "Gunpowder Barrel", "Landmine"}, Color3.fromRGB(255, 120, 0), "Utility")
+    ESPModule.tagItems({"Molotov", "Dynamite", "HolyWater", 
+    "Crucifix", "BearTrap", "GunpowderBarrel", "Landmine"}, Color3.fromRGB(255, 120, 0), "Utility")
 end
 
 ESPModule.scanAmmo = function()
-    ESPModule.tagItems({"Arrows", "Ballista Bolts", "Cannon Balls", "Shotgun Shells", 
-    "Turret Ammo", "Rifle Ammo", "Revolver Ammo"}, Color3.fromRGB(160, 82, 45), "Ammo")
+    ESPModule.tagItems({"Arrows", "BallistaBolts", "CannonBalls", "ShotgunShells", 
+    "TurretAmmo", "RifleAmmo", "RevolverAmmo"}, Color3.fromRGB(160, 82, 45), "Ammo")
 end
 
 ESPModule.scanMelee = function()
-    ESPModule.tagItems({"Cavalry Sword", "Jade Sword", "Vampire Knife", "Excalibur", "Pickaxe", "Tomahawk"}, Color3.fromRGB(0, 255, 0), "Melee")
+    ESPModule.tagItems({"CavalrySword", "JadeSword", "VampireKnife", "Excalibur", "Pickaxe", "Tomahawk"}, Color3.fromRGB(0, 255, 0), "Melee")
 end
 
 return ESPModule
