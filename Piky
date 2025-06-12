@@ -19,6 +19,10 @@ local function createBillboard(object, name, color)
     local adornee = object:IsA("Model") and (object.PrimaryPart or object:FindFirstChild("HumanoidRootPart")) or object
     if not adornee then return end
 
+    -- Check if adornee has a valid position
+    local position = adornee:IsA("Model") and adornee.PrimaryPart and adornee.PrimaryPart.Position
+    if not position then return end
+
     local highlight = Instance.new("Highlight")
     highlight.Name = name .. "_" .. object:GetDebugId()
     highlight.Adornee = adornee
@@ -41,12 +45,11 @@ local function createBillboard(object, name, color)
     label.TextColor3 = Color3.new(1, 1, 1)
     label.TextStrokeTransparency = 0
     label.TextScaled = true
-    label.Font = Enum.Font.SourceSansBold
+    label.Font = Enum.Font.Garamond
     label.Text = name
 
     RunService.RenderStepped:Connect(function()
         if Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and adornee then
-            local position = adornee:IsA("Model") and adornee.PrimaryPart and adornee.PrimaryPart.Position or adornee.Position
             local dist = math.floor((position - Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude)
             label.Text = name .. " [" .. dist .. "m]"
         end
@@ -57,13 +60,13 @@ function ESPModule.createESP(obj, name, color)
     createBillboard(obj, name, color)
 end
 
-function ESPModule.tagItems(keywordList, color, displayName)
+function ESPModule.tagItems(keywordList, color)
     for _, obj in ipairs(Workspace:GetDescendants()) do
         if obj:IsA("Model") or obj:IsA("BasePart") then
             local name = obj.Name:lower()
             for _, keyword in ipairs(keywordList) do
                 if name:find(keyword:lower()) then
-                    ESPModule.createESP(obj, obj.Name, color)
+                    ESPModule.createESP(obj, obj.Name, color) -- Use obj.Name directly
                     break
                 end
             end
