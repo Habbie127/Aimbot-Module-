@@ -4,48 +4,125 @@ local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 
-local espFolder = Workspace:FindFirstChild("NPC_ESP") or Instance.new("Folder", Workspace)
-espFolder.Name = "NPC_ESP"
+local espFolder = Workspace:FindFirstChild("ESP_Folder") or Instance.new("Folder", Workspace)
+espFolder.Name = "ESP_Folder"
 
--- Create ESP on NPC
-function ESPModule.createESP(npc)
-    if espFolder:FindFirstChild(npc.Name .. "_" .. npc:GetDebugId()) then return end
+-- Clear old ESP
+function ESPModule.clear()
+    for _, child in ipairs(espFolder:GetChildren()) do
+        child:Destroy()
+    end
+end
+
+local function createBillboard(object, name, color)
+    if espFolder:FindFirstChild(name .. "_" .. object:GetDebugId()) then return end
+    local adornee = object:IsA("Model") and object:FindFirstChild("HumanoidRootPart") or object
+    if not adornee then return end
 
     local highlight = Instance.new("Highlight")
-    highlight.Name = npc.Name .. "_" .. npc:GetDebugId()
-    highlight.Adornee = npc
-    highlight.FillColor = Color3.new(1, 1, 0) -- Yellow
-    highlight.FillTransparency = 0.5
+    highlight.Name = name .. "_" .. object:GetDebugId()
+    highlight.Adornee = adornee
+    highlight.FillColor = color
+    highlight.FillTransparency = 0.4
     highlight.OutlineColor = Color3.new(0, 0, 0)
-    highlight.OutlineTransparency = 0.1
+    highlight.OutlineTransparency = 0.2
     highlight.Parent = espFolder
 
-    local hrp = npc:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        local billboard = Instance.new("BillboardGui", highlight)
-        billboard.Name = "DistanceLabel"
-        billboard.Size = UDim2.new(0, 100, 0, 40)
-        billboard.AlwaysOnTop = true
-        billboard.StudsOffset = Vector3.new(0, 3, 0)
-        billboard.Adornee = hrp
+    local billboard = Instance.new("BillboardGui", highlight)
+    billboard.Name = "DistanceLabel"
+    billboard.Size = UDim2.new(0, 100, 0, 40)
+    billboard.AlwaysOnTop = true
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.Adornee = adornee
 
-        local label = Instance.new("TextLabel", billboard)
-        label.Size = UDim2.new(1, 0, 1, 0)
-        label.BackgroundTransparency = 1
-        label.TextColor3 = Color3.new(1, 1, 1)
-        label.TextStrokeTransparency = 0
-        label.TextScaled = true
-        label.Font = Enum.Font.SourceSansBold
-        label.Text = npc.Name
+    local label = Instance.new("TextLabel", billboard)
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = Color3.new(1, 1, 1)
+    label.TextStrokeTransparency = 0
+    label.TextScaled = true
+    label.Font = Enum.Font.SourceSansBold
+    label.Text = name
 
-        -- Update label every frame
-        RunService.RenderStepped:Connect(function()
-            if Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and hrp then
-                local dist = math.floor((hrp.Position - Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude)
-                label.Text = npc.Name .. " [" .. dist .. "m]"
+    RunService.RenderStepped:Connect(function()
+        if Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and adornee then
+            local dist = math.floor((adornee.Position - Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude)
+            label.Text = name .. " [" .. dist .. "m]"
+        end
+    end)
+end
+
+function ESPModule.tagItems(keywordList, color, displayName)
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") or obj:IsA("BasePart") then
+            local name = obj.Name:lower()
+            for _, keyword in ipairs(keywordList) do
+                if name:find(keyword:lower()) then
+                    ESPModule.createESP(obj, displayName or obj.Name, color)
+                    break
+                end
             end
-        end)
+        end
     end
+end
+
+function ESPModule.createESP(obj, name, color)
+    createBillboard(obj, name, color)
+end
+
+-- Category Scans
+ESPModule.scanNPCs = function()
+    for _, npc in ipairs(Workspace:GetDescendants()) do
+        if npc:IsA("Model") and npc:FindFirstChild("Humanoid") and npc:FindFirstChild("HumanoidRootPart") then
+            ESPModule.createESP(npc, npc.Name, Color3.fromRGB(255, 255, 0)) -- Yellow
+        end
+    end
+end
+
+ESPModule.scanValuables = function()
+    ESPModule.tagItems({"Gold Bar", "Brain In Jar", "Gold Cup", 
+"Gold Nugget", "Gold Painting", "Gold Plate", "Gold Statue", "Gold Watch", 
+"Silver Plate", "Silver Statue", "Silver Watch", "Stone Statue", "Strange Mask", 
+"Money Bag", "Silver Bar", "Silver Cup", "Silver Nugget", "Silver Painting", 
+"Wooden Painting", "Fool's Gold"}, Color3.fromRGB(255, 215, 0), "Valuable")
+end
+
+ESPModule.scanJunk = function()
+    ESPModule.tagItems({"Barrel", "Book", "Chair", "Newspaper", 
+"Rope", "Teapot", "Vase", "Wheel", "Tumbleweed", "Strange Machine", 
+"Coal", "Wanted Poster"}, Color3.fromRGB(150, 150, 150), "Junk")
+end
+
+ESPModule.scanTools = function()
+    ESPModule.tagItems({"Banjo", "Bandage", "Barbed Wire", 
+"Camera", "Lantern", "Mining Helmet", "Lightning Rod", "Sheet Metal", "Snake Oil", 
+"Saddle", "Horse Cart", "Torch", "Glass Bottle"}, Color3.fromRGB(0, 255, 255), "Tool")
+end
+
+ESPModule.scanPuzzle = function()
+    ESPModule.tagItems({"Brain Jar", "Werewolf Limb", "Jade Tablet", 
+"Notes" "Bank Note" "Ripped Bank Note" "Supply Depot Key", 
+"Strange Machine", "Fool's Key", "Crate", }, Color3.fromRGB(180, 0, 255), "Puzzle")
+end
+
+ESPModule.scanGuns = function()
+    ESPModule.tagItems({"Revolver", "Shotgun", "Rifle", "Revolver", "Shotgun", "Rifle", 
+	"Navy Revolver", "Mauser", "Electrocutioner", "Sawed-Off Shotgun", "Blunderbuss", "Rifle", "Bolt-Action Rifle", "Elephant Rifle", "Crossbow", 
+"Maxim Gun", "Cannon", "Ballista"}, Color3.fromRGB(255, 0, 0), "Gun")
+end
+
+ESPModule.scanUtilityWeapons = function()
+    ESPModule.tagItems({"Molotov", "Dynamite", "Holy Water", 
+"Crucifix", "Bear Trap", "Gunpowder Barrel", "Landmine"}, Color3.fromRGB(255, 120, 0), "Utility")
+end
+
+ESPModule.scanAmmo = function()
+    ESPModule.tagItems({"Arrows", "Ballista Bolts", "Cannon Balls", "Shotgun Shells", 
+"Turret Ammo", "Rifle Ammo", "Revolver Ammo"}, Color3.fromRGB(160, 82, 45), "Ammo")
+end
+
+ESPModule.scanMelee = function()
+    ESPModule.tagItems({"Cavalry Sword", "Jade Sword", "Vampire Knife", "Excalibur", "Pickaxe", "Tomahawk"}, Color3.fromRGB(0, 255, 0), "Melee")
 end
 
 return ESPModule
