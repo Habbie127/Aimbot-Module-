@@ -68,6 +68,13 @@ end
 
 function ESPModule.createESP(obj, name, color)
     createBillboard(obj, name, color)
+print(ESPModule.createESP) -- Check if createESP is defined
+print(ESPModule.tagItems) -- Check if tagItems is defined
+if ESPModule.createESP then
+    ESPModule.createESP(obj, displayName or obj.Name, color)
+else
+    warn("createESP function is not available")
+end
 end
 
 -- Category Scans
