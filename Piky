@@ -59,11 +59,11 @@ end
 
 function ESPModule.tagItems(keywordList, color, displayName)
     for _, obj in ipairs(Workspace:GetDescendants()) do
-        if (obj:IsA("Model") or obj:IsA("BasePart")) and not obj:IsA("Tool") then
+        if obj:IsA("Model") or obj:IsA("BasePart") then
             local name = obj.Name:lower()
             for _, keyword in ipairs(keywordList) do
                 if name:find(keyword:lower()) then
-                    ESPModule.createESP(obj, obj.Name, color)
+                    ESPModule.createESP(obj, obj.Name, color) -- Use obj.Name instead of displayName
                     break
                 end
             end
