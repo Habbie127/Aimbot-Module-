@@ -62,9 +62,12 @@ function ESPModule.tagItems(keywordList, color, displayName)
     for _, obj in ipairs(Workspace:GetDescendants()) do
         if obj:IsA("Model") or obj:IsA("BasePart") then
             local name = obj.Name:lower()
+            if name:find("wheelbase") then
+                continue -- skip wheelbase objects
+            end
             for _, keyword in ipairs(keywordList) do
                 if name:find(keyword:lower()) then
-                    ESPModule.createESP(obj, obj.Name, color) -- Use obj.Name instead of displayName
+                    ESPModule.createESP(obj, obj.Name, color)
                     break
                 end
             end
