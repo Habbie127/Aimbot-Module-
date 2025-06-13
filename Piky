@@ -34,9 +34,9 @@ local function createBillboard(object, name, color, category, isNPC)
     highlight.Name = id
     highlight.Adornee = object -- Adorn the full model
     highlight.FillColor = color
-    highlight.FillTransparency = 0.4
+    highlight.FillTransparency = 0.7
     highlight.OutlineColor = Color3.new(0, 0, 0)
-    highlight.OutlineTransparency = 0.2
+    highlight.OutlineTransparency = 0.4
     highlight.Parent = espFolder
     end
 
@@ -45,7 +45,7 @@ local function createBillboard(object, name, color, category, isNPC)
     billboard.Name = id
     billboard.Size = UDim2.new(0, 200, 0, 40)
     billboard.AlwaysOnTop = true
-    billboard.StudsOffset = Vector3.new(0, 1.5, 0)
+    billboard.StudsOffset = Vector3.new(0, 2.5, 0)
     billboard.Adornee = adornee
     billboard.Parent = espFolder
 
