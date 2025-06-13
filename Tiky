@@ -44,11 +44,16 @@ local function isVisible(targetPart)
     local direction = (targetPart.Position - origin).Unit * 1000
 
     local rayParams = RaycastParams.new()
-    rayParams.FilterDescendantsInstances = {LocalPlayer.Character}
+    rayParams.FilterDescendantsInstances = {LocalPlayer.Character} -- Exclude the player's character
     rayParams.FilterType = Enum.RaycastFilterType.Blacklist
 
     local result = Workspace:Raycast(origin, direction, rayParams)
-    return result and result.Instance and targetPart:IsDescendantOf(result.Instance.Parent)
+    
+    if result then
+        return result.Instance == targetPart or targetPart:IsDescendantOf(result.Instance.Parent)
+    end
+    
+    return true 
 end
 
 function AimbotModule.setupFOVGui()
@@ -119,9 +124,9 @@ function AimbotModule.getClosestEnemy()
                     end
                 end
 
-                if visibilityEnabled and not isVisible(hrp) then
-                    continue
-                end
+               if visibilityEnabled and not isVisible(hrp) then
+    continue
+end
 
                 if dist < shortestDist then
                     closest = npc
@@ -179,8 +184,6 @@ function AimbotModule.setFOVCircleEnabled(state)
     useFOV = state
     showFOVCircle = state
     AimbotModule.updateFOVGuiVisibility()
-
-    -- When FOV circle is enabled, disable nearest aim for exclusivity
     if state then
         aimNearest = false
     end
@@ -188,7 +191,6 @@ end
 
 function AimbotModule.setNearestAimEnabled(state)
     aimNearest = state
-    -- When nearest aim enabled, disable FOV circle for exclusivity
     if state then
         useFOV = false
         showFOVCircle = false
