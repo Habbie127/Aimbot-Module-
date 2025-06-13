@@ -49,7 +49,8 @@ local function isVisible(targetPart)
     rayParams.IgnoreWater = true
 
     local result = Workspace:Raycast(origin, direction, rayParams)
-    return result and result.Instance and targetPart:IsAncestorOf(result.Instance)
+
+    return result and result.Instance and result.Instance:IsDescendantOf(targetPart.Parent)
 end
 
 function AimbotModule.setupFOVGui()
