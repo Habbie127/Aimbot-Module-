@@ -64,15 +64,12 @@ function AimbotModule.setupFOVGui()
     circle.AnchorPoint = Vector2.new(0.5, 0.5)
     circle.Position = UDim2.new(0.5, 0, 0.5, 0)
     circle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2)
-    circle.BackgroundTransparency = 1 -- No fill
+    circle.BackgroundTransparency = 0.7
     circle.BorderSizePixel = 2
     circle.BorderColor3 = Color3.fromRGB(0, 255, 255)
+    circle.BackgroundColor3 = Color3.fromRGB(0, 255, 255)
     circle.Visible = showFOVCircle
     circle.Parent = fovCircleGui
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(1, 0)
-    corner.Parent = circle
 end
 
 function AimbotModule.getClosestEnemy()
@@ -163,9 +160,6 @@ end
 
 function AimbotModule.setFOVVisible(state)
     showFOVCircle = state
-    if not fovCircleGui or not fovCircleGui:FindFirstChild("FOVCircle") then
-        AimbotModule.setupFOVGui()
-    end
     if fovCircleGui and fovCircleGui:FindFirstChild("FOVCircle") then
         fovCircleGui.FOVCircle.Visible = state
     end
