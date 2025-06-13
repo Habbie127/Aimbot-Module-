@@ -48,11 +48,12 @@ local function createBillboard(object, name, color)
     nameLabel.Text = ""
 
     RunService.RenderStepped:Connect(function()
-    if Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and adornee and adornee:IsA("BasePart") then
-        local dist = math.floor((adornee.Position - Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude)
-        nameLabel.Text = name .. " [" .. dist .. "m]"
-    end
-end)
+        if Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and adornee then
+            local dist = math.floor((adornee.Position - Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude)
+            nameLabel.Text = name .. " [" .. dist .. "m]"
+        end
+    end)
+end
 
 function ESPModule.createESP(obj, name, color)
     createBillboard(obj, name, color)
