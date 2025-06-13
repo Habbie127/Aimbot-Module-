@@ -15,12 +15,8 @@ end
 
 local function createBillboard(object, name, color)
     if espFolder:FindFirstChild(name .. "_" .. object:GetDebugId()) then return end
-    if object:IsA("Model") and not object.PrimaryPart then
-        object.PrimaryPart = object:FindFirstChild("HumanoidRootPart") or object:FindFirstChildWhichIsA("BasePart")
-    end
-
-    local adornee = object:IsA("Model") and object.PrimaryPart or object
-    if not adornee then return end
+    local adornee = object:IsA("Model") and (object.PrimaryPart or object:FindFirstChild("HumanoidRootPart")) or object
+    if not adornee or not adornee:IsA("BasePart") then return end  -- Ensure adornee is a BasePart
 
     local highlight = Instance.new("Highlight")
     highlight.Name = name .. "_" .. object:GetDebugId()
@@ -31,26 +27,27 @@ local function createBillboard(object, name, color)
     highlight.OutlineTransparency = 0.2
     highlight.Parent = espFolder
 
-    local billboard = Instance.new("BillboardGui", espFolder)
+    local billboard = Instance.new("BillboardGui", highlight)
     billboard.Name = "DistanceLabel"
-    billboard.Size = UDim2.new(0, 200, 0, 40)
+    billboard.Size = UDim2.new(0, 200, 0, 40)  
     billboard.AlwaysOnTop = true
-    billboard.StudsOffset = Vector3.new(0, 1.5, 0)
+    billboard.StudsOffset = Vector3.new(0, 1.5, 0)  
     billboard.Adornee = adornee
 
     local nameLabel = Instance.new("TextLabel", billboard)
-    nameLabel.Size = UDim2.new(1, 0, 1, 0)
+    nameLabel.Size = UDim2.new(0.5, 0, 1, 0)  
     nameLabel.BackgroundTransparency = 1
     nameLabel.TextColor3 = Color3.new(1, 1, 1)
     nameLabel.TextStrokeTransparency = 0
-    nameLabel.TextScaled = true
+    nameLabel.TextScaled = false  
     nameLabel.Font = Enum.Font.Garamond
     nameLabel.Text = ""
 
     RunService.RenderStepped:Connect(function()
         if Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and adornee then
-            local dist = math.floor((adornee.Position - Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude)
-            nameLabel.Text = name .. " [" .. dist .. "m]"
+            local position = adornee.Position
+            local dist = math.floor((position - Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude)
+            distanceLabel.Text = "[" .. dist .. "m]"  -- Update distance text
         end
     end)
 end
