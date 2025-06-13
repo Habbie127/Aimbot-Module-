@@ -1,3 +1,19 @@
+local ESPModule = {}
+
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+
+local espFolder = Workspace:FindFirstChild("ESP_Folder") or Instance.new("Folder", Workspace)
+espFolder.Name = "ESP_Folder"
+
+-- Clear old ESP
+function ESPModule.clear()
+    for _, child in ipairs(espFolder:GetChildren()) do
+        child:Destroy()
+    end
+end
+
 local function createBillboard(object, name, color)
     if espFolder:FindFirstChild(name .. "_" .. object:GetDebugId()) then return end
     local adornee = object:IsA("Model") and (object.PrimaryPart or object:FindFirstChild("HumanoidRootPart")) or object
@@ -36,3 +52,78 @@ local function createBillboard(object, name, color)
         end
     end)
 end
+
+function ESPModule.createESP(obj, name, color)
+    createBillboard(obj, name, color)
+end
+
+function ESPModule.tagItems(keywordList, color, displayName)
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") or obj:IsA("BasePart") then
+            local name = obj.Name:lower()
+            for _, keyword in ipairs(keywordList) do
+                if name:find(keyword:lower()) then
+                    ESPModule.createESP(obj, obj.Name, color) -- Use obj.Name instead of displayName
+                    break
+                end
+            end
+        end
+    end
+end
+
+-- Category Scans
+ESPModule.scanNPCs = function()
+    for _, npc in ipairs(Workspace:GetDescendants()) do
+        if npc:IsA("Model") and npc:FindFirstChild("Humanoid") and npc:FindFirstChild("HumanoidRootPart") then
+            ESPModule.createESP(npc, npc.Name, Color3.fromRGB(255, 255, 0)) -- Yellow
+        end
+    end
+end
+
+ESPModule.scanValuables = function()
+    ESPModule.tagItems({"GoldBar", "BrainInJar", "GoldCup", 
+    "GoldNugget", "GoldPainting", "GoldPlate", "GoldStatue", "GoldWatch", 
+    "SilverPlate", "SilverStatue", "SilverWatch", "StoneStatue", "StrangeMask", 
+    "MoneyBag", "SilverBar", "Silver Cup", "SilverNugget", "SilverPainting", 
+    "WoodenPainting", "Fool'sGold"}, Color3.fromRGB(255, 215, 0), "Valuable")
+end
+
+ESPModule.scanJunk = function()
+    ESPModule.tagItems({"Barrel", "Book", "Chair", "Newspaper", 
+    "Rope", "Teapot", "Vase", "Wheel", "Tumbleweed", "StrangeMachine", 
+    "Coal", "WantedPoster"}, Color3.fromRGB(150, 150, 150), "Junk")
+end
+
+ESPModule.scanTools = function()
+    ESPModule.tagItems({"Banjo", "Bandage", "BarbedWire", 
+    "Camera", "MiningHelmet", "LightningRod", "SheetMetal", "SnakeOil", 
+    "Saddle", "HorseCart", "Torch", "GlassBottle"}, Color3.fromRGB(0, 255, 255), "Tool")
+end
+
+ESPModule.scanPuzzle = function()
+    ESPModule.tagItems({"BrainJar", "WerewolfLimb", "JadeTablet", 
+    "Notes", "BankNote", "RippedBankNote", "SupplyDepotKey", 
+    "StrangeMachine", "Fool'sKey", "Crate"}, Color3.fromRGB(180, 0, 255), "Puzzle")
+end
+
+ESPModule.scanGuns = function()
+    ESPModule.tagItems({"Revolver", "Shotgun", "Rifle", "NavyRevolver", "Mauser", 
+    "Electrocutioner", "Sawed-OffShotgun", "Blunderbuss", "Bolt-ActionRifle", 
+    "ElephantRifle", "Crossbow", "MaximGun", "Cannon", "Ballista"}, Color3.fromRGB(255, 0, 0), "Gun")
+end
+
+ESPModule.scanUtilityWeapons = function()
+    ESPModule.tagItems({"Molotov", "Dynamite", "HolyWater", 
+    "Crucifix", "BearTrap", "GunpowderBarrel", "Landmine"}, Color3.fromRGB(255, 120, 0), "Utility")
+end
+
+ESPModule.scanAmmo = function()
+    ESPModule.tagItems({"Arrows", "BallistaBolts", "CannonBalls", "ShotgunShells", 
+    "TurretAmmo", "RifleAmmo", "RevolverAmmo"}, Color3.fromRGB(160, 82, 45), "Ammo")
+end
+
+ESPModule.scanMelee = function()
+    ESPModule.tagItems({"CavalrySword", "JadeSword", "VampireKnife", "Excalibur", "Pickaxe", "Tomahawk"}, Color3.fromRGB(0, 255, 0), "Melee")
+end
+
+return ESPModule
