@@ -94,6 +94,7 @@ function AimbotModule.getClosestEnemy()
             local hrp = npc.HumanoidRootPart
             local dist = (hrp.Position - myPos).Magnitude
             if dist <= maxAimbotDistance then
+                -- FOV check
                 if useFOV then
                     local screenPoint, onScreen = Camera:WorldToViewportPoint(hrp.Position)
                     if onScreen then
@@ -106,6 +107,7 @@ function AimbotModule.getClosestEnemy()
                     end
                 end
 
+                -- Visibility check
                 if visibilityEnabled and not isVisible(hrp) then
                     continue
                 end
@@ -161,6 +163,9 @@ end
 
 function AimbotModule.setFOVVisible(state)
     showFOVCircle = state
+    if not fovCircleGui or not fovCircleGui:FindFirstChild("FOVCircle") then
+        AimbotModule.setupFOVGui()
+    end
     if fovCircleGui and fovCircleGui:FindFirstChild("FOVCircle") then
         fovCircleGui.FOVCircle.Visible = state
     end
