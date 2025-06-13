@@ -22,6 +22,7 @@ local function createBillboard(object, name, color)
     local adornee = object:IsA("Model") and object.PrimaryPart or object
     if not adornee then return end
 
+    -- Create highlight
     local highlight = Instance.new("Highlight")
     highlight.Name = name .. "_" .. object:GetDebugId()
     highlight.Adornee = adornee
@@ -31,6 +32,7 @@ local function createBillboard(object, name, color)
     highlight.OutlineTransparency = 0.2
     highlight.Parent = espFolder
 
+    -- Create billboard GUI
     local billboard = Instance.new("BillboardGui", espFolder)
     billboard.Name = "DistanceLabel"
     billboard.Size = UDim2.new(0, 200, 0, 40)
