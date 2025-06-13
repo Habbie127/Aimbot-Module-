@@ -64,11 +64,24 @@ function AimbotModule.setupFOVGui()
     circle.AnchorPoint = Vector2.new(0.5, 0.5)
     circle.Position = UDim2.new(0.5, 0, 0.5, 0)
     circle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2)
-    circle.BackgroundTransparency = 1  -- Make the background fully transparent
-    circle.BorderSizePixel = 2
-    circle.BorderColor3 = Color3.fromRGB(0, 255, 255)  -- Outline color
-    circle.Visible = showFOVCircle
+    circle.BackgroundTransparency = 1 -- Fully transparent to remove fill
+
+    -- Remove border properties, use UIStroke instead
+    circle.BorderSizePixel = 0
     circle.Parent = fovCircleGui
+
+    -- Add UICorner for circle shape
+    local uicorner = Instance.new("UICorner")
+    uicorner.CornerRadius = UDim.new(1, 0) -- 100% radius to make perfect circle
+    uicorner.Parent = circle
+
+    -- Add UIStroke for outline
+    local uistroke = Instance.new("UIStroke")
+    uistroke.Thickness = 2
+    uistroke.Color = Color3.fromRGB(0, 255, 255)
+    uistroke.Parent = circle
+
+    circle.Visible = showFOVCircle
 end
 
 function AimbotModule.getClosestEnemy()
