@@ -8,7 +8,6 @@ local espFolder = Workspace:FindFirstChild("ESP_Folder") or Instance.new("Folder
 espFolder.Name = "ESP_Folder"
 
 local activeScanners = {}
-local gunESPEnabled = false
 
 function ESPModule.clear(category)
 	for _, child in ipairs(espFolder:GetChildren()) do
@@ -99,19 +98,7 @@ end
 ESPModule.scanNPCs = function()
 	for _, npc in ipairs(Workspace:GetDescendants()) do
 		if npc:IsA("Model") and npc:FindFirstChild("Humanoid") and npc:FindFirstChild("HumanoidRootPart") then
-			if gunESPEnabled then
-				for _, item in ipairs(npc:GetDescendants()) do
-					if item:IsA("Tool") or item:IsA("Model") then
-						local name = item.Name:lower()
-						if name:find("revolver") or name:find("shotgun") or name:find("rifle") or name:find("crossbow") or name:find("blunderbuss") or name:find("mauser") then
-							goto continueNPC -- Skip this NPC
-						end
-					end
-				end
-			end
-
 			createBillboard(npc, npc.Name, Color3.fromRGB(255, 255, 0), "NPC", true)
-			::continueNPC::
 		end
 	end
 end
