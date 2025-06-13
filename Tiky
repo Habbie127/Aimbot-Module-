@@ -2,11 +2,21 @@ local AimbotModule = {}
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
-local LocalPlayer = Players.LocalPlayer
-local Camera = Workspace.CurrentCamera
 local RunService = game:GetService("RunService")
 
--- NPCs to ignore for aimbot
+local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+
+local visibilityEnabled = true
+local isAimbotEnabled = false
+local aimbotConnection = nil
+local maxAimbotDistance = 500
+local fovRadius = 60
+local useFOV = true
+local showFOVCircle = true
+
+local fovCircleGui = nil
+
 local IgnoreNames = {
     "Horse",
     "Unicorn",
@@ -14,9 +24,8 @@ local IgnoreNames = {
     "Model_RifleSoldier",
 }
 
--- Check if the model is a player
 local function isPlayerModel(model)
-    for _, player in pairs(Players:GetPlayers()) do
+    for _, player in ipairs(Players:GetPlayers()) do
         if player.Character == model then
             return true
         end
@@ -24,36 +33,135 @@ local function isPlayerModel(model)
     return false
 end
 
--- Should this NPC be ignored for aimbot?
 local function shouldIgnore(model)
     return isPlayerModel(model) or table.find(IgnoreNames, model.Name)
 end
 
--- Get closest valid aimbot target
+local function isVisible(targetPart)
+    local origin = Camera.CFrame.Position
+    local direction = (targetPart.Position - origin).Unit * 1000
+
+    local rayParams = RaycastParams.new()
+    rayParams.FilterDescendantsInstances = {LocalPlayer.Character}
+    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+
+    local result = Workspace:Raycast(origin, direction, rayParams)
+    return result and result.Instance and targetPart:IsDescendantOf(result.Instance.Parent)
+end
+
+function AimbotModule.setupFOVGui()
+    if fovCircleGui then fovCircleGui:Destroy() end
+
+    fovCircleGui = Instance.new("ScreenGui")
+    fovCircleGui.Name = "AimbotFOVGui"
+    fovCircleGui.ResetOnSpawn = false
+    fovCircleGui.IgnoreGuiInset = true
+    fovCircleGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+    fovCircleGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+    local circle = Instance.new("Frame")
+    circle.Name = "FOVCircle"
+    circle.AnchorPoint = Vector2.new(0.5, 0.5)
+    circle.Position = UDim2.new(0.5, 0, 0.5, 0)
+    circle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2)
+    circle.BackgroundTransparency = 0.7
+    circle.BorderSizePixel = 2
+    circle.BorderColor3 = Color3.fromRGB(0, 255, 255)
+    circle.BackgroundColor3 = Color3.fromRGB(0, 255, 255)
+    circle.Visible = showFOVCircle
+    circle.Parent = fovCircleGui
+end
+
 function AimbotModule.getClosestEnemy()
-    local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return nil end
-    local myPos = char.HumanoidRootPart.Position
+    local character = LocalPlayer.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return nil end
+
+    local myPos = character.HumanoidRootPart.Position
+    local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
 
     local closest, shortestDist = nil, math.huge
+
     for _, npc in pairs(Workspace:GetDescendants()) do
         if npc:IsA("Model") and npc:FindFirstChild("Humanoid") and npc:FindFirstChild("HumanoidRootPart") and not shouldIgnore(npc) then
+            local humanoid = npc.Humanoid
+            if humanoid.Health <= 0 or humanoid:GetState() == Enum.HumanoidStateType.Dead then
+                continue
+            end
+
             local hrp = npc.HumanoidRootPart
             local dist = (hrp.Position - myPos).Magnitude
-            if dist < shortestDist then
-                closest = npc
-                shortestDist = dist
+            if dist <= maxAimbotDistance then
+                -- FOV check
+                if useFOV then
+                    local screenPoint, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+                    if onScreen then
+                        local distanceFromCenter = (Vector2.new(screenPoint.X, screenPoint.Y) - screenCenter).Magnitude
+                        if distanceFromCenter > fovRadius then
+                            continue
+                        end
+                    else
+                        continue
+                    end
+                end
+
+                -- Visibility check
+                if visibilityEnabled and not isVisible(hrp) then
+                    continue
+                end
+
+                if dist < shortestDist then
+                    closest = npc
+                    shortestDist = dist
+                end
             end
         end
     end
+
     return closest
 end
 
--- Aim at closest enemy
 function AimbotModule.aimAtEnemy()
     local target = AimbotModule.getClosestEnemy()
     if target and target:FindFirstChild("HumanoidRootPart") then
         Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.HumanoidRootPart.Position)
+    end
+end
+
+function AimbotModule.setAimbotState(state)
+    isAimbotEnabled = state
+
+    if aimbotConnection then
+        aimbotConnection:Disconnect()
+        aimbotConnection = nil
+    end
+
+    if state then
+        AimbotModule.setupFOVGui()
+        aimbotConnection = RunService.RenderStepped:Connect(function()
+            AimbotModule.aimAtEnemy()
+        end)
+    elseif fovCircleGui then
+        fovCircleGui:Destroy()
+        fovCircleGui = nil
+    end
+end
+
+function AimbotModule.setVisibilityCheck(state)
+    visibilityEnabled = state
+end
+
+function AimbotModule.setDistanceLimit(dist)
+    maxAimbotDistance = dist
+end
+
+function AimbotModule.setFOVEnabled(state)
+    useFOV = state
+end
+
+function AimbotModule.setFOVVisible(state)
+    showFOVCircle = state
+    if fovCircleGui and fovCircleGui:FindFirstChild("FOVCircle") then
+        fovCircleGui.FOVCircle.Visible = state
     end
 end
 
