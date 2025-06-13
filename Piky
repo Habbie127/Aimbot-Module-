@@ -31,19 +31,19 @@ local function createBillboard(object, name, color)
     highlight.OutlineTransparency = 0.2
     highlight.Parent = espFolder
 
-    local billboard = Instance.new("BillboardGui", highlight)
+    local billboard = Instance.new("BillboardGui", espFolder)
     billboard.Name = "DistanceLabel"
-    billboard.Size = UDim2.new(0, 200, 0, 40)  
+    billboard.Size = UDim2.new(0, 200, 0, 40)
     billboard.AlwaysOnTop = true
-    billboard.StudsOffset = Vector3.new(0, 1.5, 0)  
+    billboard.StudsOffset = Vector3.new(0, 1.5, 0)
     billboard.Adornee = adornee
 
     local nameLabel = Instance.new("TextLabel", billboard)
-    nameLabel.Size = UDim2.new(0.5, 0, 1, 0)  
+    nameLabel.Size = UDim2.new(1, 0, 1, 0)
     nameLabel.BackgroundTransparency = 1
     nameLabel.TextColor3 = Color3.new(1, 1, 1)
     nameLabel.TextStrokeTransparency = 0
-    nameLabel.TextScaled = false  
+    nameLabel.TextScaled = false
     nameLabel.Font = Enum.Font.Garamond
     nameLabel.Text = ""
 
