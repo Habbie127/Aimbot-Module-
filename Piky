@@ -13,7 +13,7 @@ function ESPModule.clear()
     end
 end
 
-local function createBillboard(object, name, color)
+local function createBillboard(object, name, color, isNPC)
     if espFolder:FindFirstChild(name .. "_" .. object:GetDebugId()) then return end
     if object:IsA("Model") and not object.PrimaryPart then
         object.PrimaryPart = object:FindFirstChild("HumanoidRootPart") or object:FindFirstChildWhichIsA("BasePart")
@@ -22,15 +22,19 @@ local function createBillboard(object, name, color)
     local adornee = object:IsA("Model") and object.PrimaryPart or object
     if not adornee then return end
 
-    local highlight = Instance.new("Highlight")
-    highlight.Name = name .. "_" .. object:GetDebugId()
-    highlight.Adornee = adornee
-    highlight.FillColor = color
-    highlight.FillTransparency = 0.4
-    highlight.OutlineColor = Color3.new(0, 0, 0)
-    highlight.OutlineTransparency = 0.2
-    highlight.Parent = espFolder
+    -- Create highlight only for NPCs
+    if isNPC then
+        local highlight = Instance.new("Highlight")
+        highlight.Name = name .. "_" .. object:GetDebugId()
+        highlight.Adornee = adornee
+        highlight.FillColor = color
+        highlight.FillTransparency = 0.4
+        highlight.OutlineColor = Color3.new(0, 0, 0)
+        highlight.OutlineTransparency = 0.2
+        highlight.Parent = espFolder
+    end
 
+    -- Create a billboard for both NPCs and items
     local billboard = Instance.new("BillboardGui", espFolder)
     billboard.Name = "DistanceLabel"
     billboard.Size = UDim2.new(0, 200, 0, 40)
@@ -55,8 +59,8 @@ local function createBillboard(object, name, color)
     end)
 end
 
-function ESPModule.createESP(obj, name, color)
-    createBillboard(obj, name, color)
+function ESPModule.createESP(obj, name, color, isNPC)
+    createBillboard(obj, name, color, isNPC)
 end
 
 function ESPModule.tagItems(keywordList, color)
@@ -68,7 +72,7 @@ function ESPModule.tagItems(keywordList, color)
             end
             for _, keyword in ipairs(keywordList) do
                 if name:find(keyword:lower()) then
-                    ESPModule.createESP(obj, obj.Name, color)
+                    ESPModule.createESP(obj, obj.Name, color, false) -- false for items
                     break
                 end
             end
@@ -79,7 +83,7 @@ end
 ESPModule.scanNPCs = function()
     for _, npc in ipairs(Workspace:GetDescendants()) do
         if npc:IsA("Model") and npc:FindFirstChild("Humanoid") and npc:FindFirstChild("HumanoidRootPart") then
-            ESPModule.createESP(npc, npc.Name, Color3.fromRGB(255, 255, 0)) -- Yellow
+            ESPModule.createESP(npc, npc.Name, Color3.fromRGB(255, 255, 0), true) -- Yellow for NPCs
         end
     end
 end
@@ -154,7 +158,7 @@ task.spawn(continuousScan)
 Workspace.ChildAdded:Connect(function(child)
     if child:IsA("Model") then
         if child:FindFirstChild("Humanoid") then
-            ESPModule.createESP(child, child.Name, Color3.fromRGB(255, 255, 0)) -- For NPCs
+            ESPModule.createESP(child, child.Name, Color3.fromRGB(255, 255, 0), true) -- For NPCs
         else
             -- Check for items and tag them accordingly
             ESPModule.tagItems({"GoldBar", "BrainInJar", "GoldCup", 
