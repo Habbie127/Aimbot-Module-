@@ -22,7 +22,6 @@ local function createBillboard(object, name, color)
     local adornee = object:IsA("Model") and object.PrimaryPart or object
     if not adornee then return end
 
-    -- Create highlight
     local highlight = Instance.new("Highlight")
     highlight.Name = name .. "_" .. object:GetDebugId()
     highlight.Adornee = adornee
@@ -32,7 +31,6 @@ local function createBillboard(object, name, color)
     highlight.OutlineTransparency = 0.2
     highlight.Parent = espFolder
 
-    -- Create billboard GUI
     local billboard = Instance.new("BillboardGui", espFolder)
     billboard.Name = "DistanceLabel"
     billboard.Size = UDim2.new(0, 200, 0, 40)
@@ -81,17 +79,7 @@ end
 ESPModule.scanNPCs = function()
     for _, npc in ipairs(Workspace:GetDescendants()) do
         if npc:IsA("Model") and npc:FindFirstChild("Humanoid") and npc:FindFirstChild("HumanoidRootPart") then
-            -- Check if the NPC is holding a gun and skip highlighting it
-            local hasGun = false
-            for _, item in ipairs(npc:GetChildren()) do
-                if item:IsA("Tool") and item.Name:find("Gun") then
-                    hasGun = true
-                    break
-                end
-            end
-            if not hasGun then
-                ESPModule.createESP(npc, npc.Name, Color3.fromRGB(255, 255, 0)) -- Yellow
-            end
+            ESPModule.createESP(npc, npc.Name, Color3.fromRGB(255, 255, 0)) -- Yellow
         end
     end
 end
@@ -166,17 +154,7 @@ task.spawn(continuousScan)
 Workspace.ChildAdded:Connect(function(child)
     if child:IsA("Model") then
         if child:FindFirstChild("Humanoid") then
-            -- Check if the NPC is holding a gun and skip highlighting it
-            local hasGun = false
-            for _, item in ipairs(child:GetChildren()) do
-                if item:IsA("Tool") and item.Name:find("Gun") then
-                    hasGun = true
-                    break
-                end
-            end
-            if not hasGun then
-                ESPModule.createESP(child, child.Name, Color3.fromRGB(255, 255, 0)) -- For NPCs
-            end
+            ESPModule.createESP(child, child.Name, Color3.fromRGB(255, 255, 0)) -- For NPCs
         else
             -- Check for items and tag them accordingly
             ESPModule.tagItems({"GoldBar", "BrainInJar", "GoldCup", 
