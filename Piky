@@ -7,7 +7,7 @@ local RunService = game:GetService("RunService")
 local espFolder = Workspace:FindFirstChild("ESP_Folder") or Instance.new("Folder", Workspace)
 espFolder.Name = "ESP_Folder"
 
-local activeScanners = {} -- Track each toggle
+local activeScanners = {}
 
 function ESPModule.clear(category)
     for _, child in ipairs(espFolder:GetChildren()) do
@@ -17,26 +17,31 @@ function ESPModule.clear(category)
     end
 end
 
-local function createBillboard(object, name, color, category)
+local function isHeldByNPC(obj)
+    local parent = obj.Parent
+    return parent and parent:IsA("Model") and parent:FindFirstChild("Humanoid")
+end
+
+local function createBillboard(object, name, color, category, isNPC)
     local id = category .. "_" .. object:GetDebugId()
     if espFolder:FindFirstChild(id) then return end
 
-    if object:IsA("Model") and not object.PrimaryPart then
-        object.PrimaryPart = object:FindFirstChild("HumanoidRootPart") or object:FindFirstChildWhichIsA("BasePart")
+    local adornee = object:IsA("Model") and (object.PrimaryPart or object:FindFirstChild("HumanoidRootPart") or object:FindFirstChildWhichIsA("BasePart")) or object
+    if not adornee then return end
+
+    -- 🟡 Highlight only if it's an NPC
+    if isNPC then
+        local highlight = Instance.new("Highlight")
+        highlight.Name = id
+        highlight.Adornee = adornee
+        highlight.FillColor = color
+        highlight.FillTransparency = 0.4
+        highlight.OutlineColor = Color3.new(0, 0, 0)
+        highlight.OutlineTransparency = 0.2
+        highlight.Parent = espFolder
     end
 
-    local adornee = object:IsA("Model") and object.PrimaryPart or object  
-    if not adornee then return end  
-
-    local highlight = Instance.new("Highlight")
-    highlight.Name = id
-    highlight.Adornee = adornee
-    highlight.FillColor = color
-    highlight.FillTransparency = 0.4
-    highlight.OutlineColor = Color3.new(0, 0, 0)
-    highlight.OutlineTransparency = 0.2
-    highlight.Parent = espFolder
-
+    -- 📍 Billboard (always used)
     local billboard = Instance.new("BillboardGui")
     billboard.Name = id
     billboard.Size = UDim2.new(0, 200, 0, 40)
@@ -69,7 +74,9 @@ function ESPModule.tagItems(category, keywordList, color)
             if name:find("wheelbase") or name:find("table") then continue end
             for _, keyword in ipairs(keywordList) do
                 if name:find(keyword:lower()) then
-                    createBillboard(obj, obj.Name, color, category)
+                    -- Skip if the model is held by an NPC
+                    if isHeldByNPC(obj) then break end
+                    createBillboard(obj, obj.Name, color, category, false)
                     break
                 end
             end
@@ -77,16 +84,14 @@ function ESPModule.tagItems(category, keywordList, color)
     end
 end
 
--- One-time scanners
 ESPModule.scanNPCs = function()
     for _, npc in ipairs(Workspace:GetDescendants()) do
         if npc:IsA("Model") and npc:FindFirstChild("Humanoid") and npc:FindFirstChild("HumanoidRootPart") then
-            createBillboard(npc, npc.Name, Color3.fromRGB(255, 255, 0), "NPC")
+            createBillboard(npc, npc.Name, Color3.fromRGB(255, 255, 0), "NPC", true)
         end
     end
 end
 
--- Toggleable auto scanners
 function ESPModule.start(category, scanFunc)
     if activeScanners[category] then return end
     activeScanners[category] = true
@@ -103,7 +108,6 @@ function ESPModule.stop(category)
     ESPModule.clear(category)
 end
 
--- Specific scanners
 ESPModule.startNPCs = function()
     ESPModule.start("NPC", ESPModule.scanNPCs)
 end
