@@ -61,7 +61,7 @@ end
 
 function ESPModule.tagItems(keywordList, color, displayName)
     for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("Model") or obj:IsA("BasePart") then
+        if obj:IsA("Model") then
             local name = obj.Name:lower()
             if name:find("wheelbase") or name:find("table") then
             continue 
@@ -85,7 +85,7 @@ ESPModule.scanNPCs = function()
 end
 
 ESPModule.scanValuables = function()
-    ESPModule.tagItems({"BrainInJar", "GoldCup", 
+    ESPModule.tagItems({"GoldBar", "BrainInJar", "GoldCup", 
     "GoldNugget", "GoldPainting", "GoldPlate", "GoldStatue", "GoldWatch", 
     "SilverPlate", "SilverStatue", "SilverWatch", "StoneStatue", "StrangeMask", 
     "MoneyBag", "SilverBar", "Silver Cup", "SilverNugget", "SilverPainting", 
