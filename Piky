@@ -31,8 +31,18 @@ local function createBillboard(object, name, color)
     billboard.Name = "DistanceLabel"
     billboard.Size = UDim2.new(0, 200, 0, 40)  
     billboard.AlwaysOnTop = true
-    billboard.StudsOffset = Vector3.new(0, 5, 0)  
+    billboard.StudsOffset = Vector3.new(0, 3, 0)  
     billboard.Adornee = adornee
+    
+    local distanceLabel = Instance.new("TextLabel", billboard)
+    distanceLabel.Size = UDim2.new(0.5, 0, 1, 0)  
+    distanceLabel.BackgroundTransparency = 1
+    distanceLabel.TextColor3 = Color3.new(1, 1, 1)
+    distanceLabel.TextStrokeTransparency = 0
+    distanceLabel.TextScaled = false
+    distanceLabel.Font = Enum.Font.Garamond
+    distanceLabel.Position = UDim2.new(0, 0, 0, 0)  
+    distanceLabel.Text = ""  
 
     local nameLabel = Instance.new("TextLabel", billboard)
     nameLabel.Size = UDim2.new(0.5, 0, 1, 0)  
@@ -43,16 +53,6 @@ local function createBillboard(object, name, color)
     nameLabel.Font = Enum.Font.Garamond
     nameLabel.Position = UDim2.new(0.5, 0, 0, 0)  
     nameLabel.Text = name
-
-    local distanceLabel = Instance.new("TextLabel", billboard)
-    distanceLabel.Size = UDim2.new(0.5, 0, 1, 0)  
-    distanceLabel.BackgroundTransparency = 1
-    distanceLabel.TextColor3 = Color3.new(1, 1, 1)
-    distanceLabel.TextStrokeTransparency = 0
-    distanceLabel.TextScaled = false
-    distanceLabel.Font = Enum.Font.Garamond
-    distanceLabel.Position = UDim2.new(0, -100, 0, 0)  
-    distanceLabel.Text = ""  
 
     RunService.RenderStepped:Connect(function()
         if Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and adornee then
