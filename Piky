@@ -131,6 +131,25 @@ ESPModule.scanMelee = function()
     "Helmet", "Left Arm_Armor", "Right Arm_Armor", "Chestplate"}, Color3.fromRGB(0, 255, 0))
 end
 
+-- Continuous scanning for new NPCs and items
+local function continuousScan()
+    while true do
+        ESPModule.scanNPCs()
+        ESPModule.scanValuables()
+        ESPModule.scanJunk()
+        ESPModule.scanTools()
+        ESPModule.scanPuzzle()
+        ESPModule.scanGuns()
+        ESPModule.scanUtilityWeapons()
+        ESPModule.scanAmmo()
+        ESPModule.scanMelee()
+        wait(1) -- Adjust the wait time as necessary
+    end
+end
+
+-- Start the continuous scanning in a separate thread
+task.spawn(continuousScan)
+
 -- Dynamic scanning for new NPCs and items
 Workspace.ChildAdded:Connect(function(child)
     if child:IsA("Model") then
