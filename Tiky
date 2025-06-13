@@ -20,8 +20,8 @@ local aimNearest = false
 local fovCircleGui = nil
 
 local IgnoreNames = {
-    "Horse",
-    "Unicorn",
+    "Model_Horse",
+    "Model_Unicorn",
     "Model_TurretSoldier",
     "Model_RifleSoldier",
 }
@@ -41,19 +41,15 @@ end
 
 local function isVisible(targetPart)
     local origin = Camera.CFrame.Position
-    local direction = (targetPart.Position - origin).Unit * 1000
+    local direction = (targetPart.Position - origin)
 
     local rayParams = RaycastParams.new()
-    rayParams.FilterDescendantsInstances = {LocalPlayer.Character} -- Exclude the player's character
+    rayParams.FilterDescendantsInstances = {LocalPlayer.Character}
     rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+    rayParams.IgnoreWater = true
 
     local result = Workspace:Raycast(origin, direction, rayParams)
-    
-    if result then
-        return result.Instance == targetPart or targetPart:IsDescendantOf(result.Instance.Parent)
-    end
-    
-    return true 
+    return result and result.Instance and targetPart:IsAncestorOf(result.Instance)
 end
 
 function AimbotModule.setupFOVGui()
@@ -124,9 +120,9 @@ function AimbotModule.getClosestEnemy()
                     end
                 end
 
-               if visibilityEnabled and not isVisible(hrp) then
-    continue
-end
+                if visibilityEnabled and not isVisible(hrp) then
+                    continue
+                end
 
                 if dist < shortestDist then
                     closest = npc
@@ -184,6 +180,7 @@ function AimbotModule.setFOVCircleEnabled(state)
     useFOV = state
     showFOVCircle = state
     AimbotModule.updateFOVGuiVisibility()
+
     if state then
         aimNearest = false
     end
