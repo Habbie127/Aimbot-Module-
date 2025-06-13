@@ -29,16 +29,15 @@ local function createBillboard(object, name, color, category, isNPC)
     local adornee = object:IsA("Model") and (object.PrimaryPart or object:FindFirstChild("HumanoidRootPart") or object:FindFirstChildWhichIsA("BasePart")) or object
     if not adornee then return end
 
-    -- 🟡 Highlight only if it's an NPC
-    if isNPC then
-        local highlight = Instance.new("Highlight")
-        highlight.Name = id
-        highlight.Adornee = adornee
-        highlight.FillColor = color
-        highlight.FillTransparency = 0.4
-        highlight.OutlineColor = Color3.new(0, 0, 0)
-        highlight.OutlineTransparency = 0.2
-        highlight.Parent = espFolder
+    if isNPC and object:IsA("Model") then
+    local highlight = Instance.new("Highlight")
+    highlight.Name = id
+    highlight.Adornee = object -- Adorn the full model
+    highlight.FillColor = color
+    highlight.FillTransparency = 0.4
+    highlight.OutlineColor = Color3.new(0, 0, 0)
+    highlight.OutlineTransparency = 0.2
+    highlight.Parent = espFolder
     end
 
     -- 📍 Billboard (always used)
