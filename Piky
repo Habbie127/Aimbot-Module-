@@ -100,7 +100,7 @@ end
 
 ESPModule.scanTools = function()
     ESPModule.tagItems({"Banjo", "Bandage", "BarbedWire", 
-    "Camera", "MiningHelmet", "LightningRod", "SheetMetal", "SnakeOil", 
+    "Camera", "MiningHelmet", "LightningRod", "SheetMetal", "Snake Oil", 
     "Saddle", "HorseCart", "Torch", "GlassBottle"}, Color3.fromRGB(0, 255, 255), "Tool")
 end
 
