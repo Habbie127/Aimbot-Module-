@@ -94,7 +94,6 @@ function AimbotModule.getClosestEnemy()
             local hrp = npc.HumanoidRootPart
             local dist = (hrp.Position - myPos).Magnitude
             if dist <= maxAimbotDistance then
-                -- FOV check
                 if useFOV then
                     local screenPoint, onScreen = Camera:WorldToViewportPoint(hrp.Position)
                     if onScreen then
@@ -107,7 +106,6 @@ function AimbotModule.getClosestEnemy()
                     end
                 end
 
-                -- Visibility check
                 if visibilityEnabled and not isVisible(hrp) then
                     continue
                 end
