@@ -59,15 +59,15 @@ function AimbotModule.setupFOVGui()
     fovCircleGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
     fovCircleGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
-    local circle = Instance.new("Frame")
+    local circle = Instance.new("ImageLabel")
     circle.Name = "FOVCircle"
     circle.AnchorPoint = Vector2.new(0.5, 0.5)
     circle.Position = UDim2.new(0.5, 0, 0.5, 0)
     circle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2)
-    circle.BackgroundTransparency = 0.7
-    circle.BorderSizePixel = 2
-    circle.BorderColor3 = Color3.fromRGB(0, 255, 255)
-    circle.BackgroundColor3 = Color3.fromRGB(0, 255, 255)
+    circle.BackgroundTransparency = 1
+    circle.Image = "rbxassetid://1145408212"
+    circle.ImageColor3 = Color3.fromRGB(0, 255, 255)
+    circle.ImageTransparency = 0
     circle.Visible = showFOVCircle
     circle.Parent = fovCircleGui
 end
