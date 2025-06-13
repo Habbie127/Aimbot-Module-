@@ -100,7 +100,7 @@ end
 
 ESPModule.scanTools = function()
     ESPModule.tagItems({"Banjo", "Bandage", "BarbedWire", 
-    "Camera", "MiningHelmet", "LightningRod", "SheetMetal", "Snake Oil", 
+    "Camera", "Mining Helmet", "LightningRod", "SheetMetal", "Snake Oil", 
     "Saddle", "HorseCart", "Torch", "GlassBottle"}, Color3.fromRGB(0, 255, 255), "Tool")
 end
 
@@ -127,7 +127,8 @@ ESPModule.scanAmmo = function()
 end
 
 ESPModule.scanMelee = function()
-    ESPModule.tagItems({"CavalrySword", "JadeSword", "VampireKnife", "Excalibur", "Pickaxe", "Tomahawk"}, Color3.fromRGB(0, 255, 0), "Melee")
+    ESPModule.tagItems({"CavalrySword", "JadeSword", "VampireKnife", "Excalibur", "Pickaxe", "Tomahawk", 
+"Helmet", "Left Shoulder Armor", "Right Shoulder Armor", "Chestplate"}, Color3.fromRGB(0, 255, 0), "Melee")
 end
 
 return ESPModule
