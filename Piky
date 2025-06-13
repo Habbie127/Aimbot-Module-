@@ -63,8 +63,8 @@ function ESPModule.tagItems(keywordList, color, displayName)
     for _, obj in ipairs(Workspace:GetDescendants()) do
         if obj:IsA("Model") or obj:IsA("BasePart") then
             local name = obj.Name:lower()
-            if name:find("wheelbase", "BandageTable", "SnakeOilTable") then
-                continue 
+            if name:find("wheelbase") or name:find("table") then
+            continue 
             end
             for _, keyword in ipairs(keywordList) do
                 if name:find(keyword:lower()) then
