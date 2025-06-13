@@ -15,12 +15,13 @@ end
 
 local function createBillboard(object, name, color)
     if espFolder:FindFirstChild(name .. "_" .. object:GetDebugId()) then return end
+
     if object:IsA("Model") and not object.PrimaryPart then
         object.PrimaryPart = object:FindFirstChild("HumanoidRootPart") or object:FindFirstChildWhichIsA("BasePart")
     end
 
     local adornee = object:IsA("Model") and object.PrimaryPart or object
-    if not adornee then return end
+    if not adornee or not adornee:IsA("BasePart") then return end  -- Ensure adornee is a BasePart
 
     local highlight = Instance.new("Highlight")
     highlight.Name = name .. "_" .. object:GetDebugId()
@@ -39,7 +40,7 @@ local function createBillboard(object, name, color)
     billboard.Adornee = adornee
 
     local nameLabel = Instance.new("TextLabel", billboard)
-    nameLabel.Size = UDim2.new(1, 0, 1, 0)
+    nameLabel.Size = UDim2.new(10, 0, 10, 0)
     nameLabel.BackgroundTransparency = 1
     nameLabel.TextColor3 = Color3.new(1, 1, 1)
     nameLabel.TextStrokeTransparency = 0
@@ -53,6 +54,24 @@ local function createBillboard(object, name, color)
             nameLabel.Text = name .. " [" .. dist .. "m]"
         end
     end)
+end
+
+function ESPModule.tagItems(keywordList, color, displayName)
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") or obj:IsA("BasePart") then
+            local name = obj.Name:lower()
+            -- Skip unwanted models like WheelBases
+            if name:find("wheelbases") then
+                continue  
+            end
+            for _, keyword in ipairs(keywordList) do
+                if name:find(keyword:lower()) then
+                    ESPModule.createESP(obj, obj.Name, color) -- Use obj.Name instead of displayName
+                    break
+                end
+            end
+        end
+    end
 end
 
 function ESPModule.createESP(obj, name, color)
