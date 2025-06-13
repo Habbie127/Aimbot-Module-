@@ -15,8 +15,12 @@ end
 
 local function createBillboard(object, name, color)
     if espFolder:FindFirstChild(name .. "_" .. object:GetDebugId()) then return end
-    local adornee = object:IsA("Model") and (object.PrimaryPart or object:FindFirstChild("HumanoidRootPart")) or object
-    if not adornee or not adornee:IsA("BasePart") then return end  -- Ensure adornee is a BasePart
+    if object:IsA("Model") and not object.PrimaryPart then
+        object.PrimaryPart = object:FindFirstChild("HumanoidRootPart") or object:FindFirstChildWhichIsA("BasePart")
+    end
+
+    local adornee = object:IsA("Model") and object.PrimaryPart or object
+    if not adornee then return end
 
     local highlight = Instance.new("Highlight")
     highlight.Name = name .. "_" .. object:GetDebugId()
@@ -45,9 +49,8 @@ local function createBillboard(object, name, color)
 
     RunService.RenderStepped:Connect(function()
         if Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and adornee then
-            local position = adornee.Position
-            local dist = math.floor((position - Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude)
-            distanceLabel.Text = "[" .. dist .. "m]"  -- Update distance text
+            local dist = math.floor((adornee.Position - Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude)
+            nameLabel.Text = name .. " [" .. dist .. "m]"
         end
     end)
 end
