@@ -81,7 +81,17 @@ end
 ESPModule.scanNPCs = function()
     for _, npc in ipairs(Workspace:GetDescendants()) do
         if npc:IsA("Model") and npc:FindFirstChild("Humanoid") and npc:FindFirstChild("HumanoidRootPart") then
-            ESPModule.createESP(npc, npc.Name, Color3.fromRGB(255, 255, 0)) -- Yellow
+            -- Check if the NPC is holding a gun and skip highlighting it
+            local hasGun = false
+            for _, item in ipairs(npc:GetChildren()) do
+                if item:IsA("Tool") and item.Name:find("Gun") then
+                    hasGun = true
+                    break
+                end
+            end
+            if not hasGun then
+                ESPModule.createESP(npc, npc.Name, Color3.fromRGB(255, 255, 0)) -- Yellow
+            end
         end
     end
 end
@@ -156,7 +166,17 @@ task.spawn(continuousScan)
 Workspace.ChildAdded:Connect(function(child)
     if child:IsA("Model") then
         if child:FindFirstChild("Humanoid") then
-            ESPModule.createESP(child, child.Name, Color3.fromRGB(255, 255, 0)) -- For NPCs
+            -- Check if the NPC is holding a gun and skip highlighting it
+            local hasGun = false
+            for _, item in ipairs(child:GetChildren()) do
+                if item:IsA("Tool") and item.Name:find("Gun") then
+                    hasGun = true
+                    break
+                end
+            end
+            if not hasGun then
+                ESPModule.createESP(child, child.Name, Color3.fromRGB(255, 255, 0)) -- For NPCs
+            end
         else
             -- Check for items and tag them accordingly
             ESPModule.tagItems({"GoldBar", "BrainInJar", "GoldCup", 
