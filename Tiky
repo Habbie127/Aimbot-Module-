@@ -12,8 +12,9 @@ local isAimbotEnabled = false
 local aimbotConnection = nil
 local maxAimbotDistance = 500
 local fovRadius = 60
-local useFOV = true
-local showFOVCircle = true
+local useNearestMode = false
+local useFOVMode = false
+local showFOVCircle = false
 
 local fovCircleGui = nil
 
@@ -65,7 +66,7 @@ function AimbotModule.setupFOVGui()
     FOVCircle.BorderSizePixel = 0
     FOVCircle.Size = UDim2.fromOffset(fovRadius * 2, fovRadius * 2)
     FOVCircle.ZIndex = 10
-    FOVCircle.Visible = showFOVCircle  -- Set visibility based on the variable
+    FOVCircle.Visible = showFOVCircle
     FOVCircle.Parent = FOVGui
 
     local UICorner = Instance.new("UICorner", FOVCircle)
@@ -91,35 +92,28 @@ function AimbotModule.getClosestEnemy()
     for _, npc in pairs(Workspace:GetDescendants()) do
         if npc:IsA("Model") and npc:FindFirstChild("Humanoid") and npc:FindFirstChild("HumanoidRootPart") and not shouldIgnore(npc) then
             local humanoid = npc.Humanoid
-            if humanoid.Health <= 0 or humanoid:GetState() == Enum.HumanoidStateType.Dead then
-                continue
-            end
+            if humanoid.Health <= 0 then continue end
 
             local hrp = npc.HumanoidRootPart
             local dist = (hrp.Position - myPos).Magnitude
-            if dist <= maxAimbotDistance then
-                -- FOV check
-                if useFOV then
-                    local screenPoint, onScreen = Camera:WorldToViewportPoint(hrp.Position)
-                    if onScreen then
-                        local distanceFromCenter = (Vector2.new(screenPoint.X, screenPoint.Y) - screenCenter).Magnitude
-                        if distanceFromCenter > fovRadius then
-                            continue
-                        end
-                    else
-                        continue
-                    end
-                end
+            if dist > maxAimbotDistance then continue end
 
-                -- Visibility check
-                if visibilityEnabled and not isVisible(hrp) then
-                    continue
-                end
+            if visibilityEnabled and not isVisible(hrp) then continue end
 
-                if dist < shortestDist then
-                    closest = npc
-                    shortestDist = dist
-                end
+            if useFOVMode then
+                local screenPoint, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+                if not onScreen then continue end
+
+                local distanceFromCenter = (Vector2.new(screenPoint.X, screenPoint.Y) - screenCenter).Magnitude
+                if distanceFromCenter > fovRadius then continue end
+            elseif not useNearestMode then
+                -- If neither mode is on, don't aim
+                return nil
+            end
+
+            if dist < shortestDist then
+                closest = npc
+                shortestDist = dist
             end
         end
     end
@@ -153,6 +147,8 @@ function AimbotModule.setAimbotState(state)
     end
 end
 
+-- SETTERS
+
 function AimbotModule.setVisibilityCheck(state)
     visibilityEnabled = state
 end
@@ -161,8 +157,12 @@ function AimbotModule.setDistanceLimit(dist)
     maxAimbotDistance = dist
 end
 
-function AimbotModule.setFOVEnabled(state)
-    useFOV = state
+function AimbotModule.setUseNearest(state)
+    useNearestMode = state
+end
+
+function AimbotModule.setUseFOV(state)
+    useFOVMode = state
 end
 
 function AimbotModule.setFOVVisible(state)
