@@ -64,7 +64,7 @@ function ESPModule.tagItems(keywordList, color, displayName)
         if obj:IsA("Model") then
             local name = obj.Name:lower()
             if name:find("wheelbase") or name:find("table") then
-            continue 
+                continue 
             end
             for _, keyword in ipairs(keywordList) do
                 if name:find(keyword:lower()) then
@@ -88,7 +88,7 @@ ESPModule.scanValuables = function()
     ESPModule.tagItems({"GoldBar", "BrainInJar", "GoldCup", 
     "GoldNugget", "GoldPainting", "GoldPlate", "GoldStatue", "GoldWatch", 
     "SilverPlate", "SilverStatue", "SilverWatch", "StoneStatue", "StrangeMask", 
-    "MoneyBag", "SilverBar", "Silver Cup", "SilverNugget", "SilverPainting", 
+    "MoneyBag", "SilverBar", "SilverCup", "SilverNugget", "SilverPainting", 
     "WoodenPainting", "Fool'sGold"}, Color3.fromRGB(255, 215, 0), "Valuable")
 end
 
@@ -128,7 +128,46 @@ end
 
 ESPModule.scanMelee = function()
     ESPModule.tagItems({"CavalrySword", "JadeSword", "VampireKnife", "Excalibur", "Pickaxe", "Tomahawk", 
-"Helmet", "Left Arm_Armor", "Right Arm_Armor", "Chestplate"}, Color3.fromRGB(0, 255, 0), "Melee")
+    "Helmet", "Left Arm_Armor", "Right Arm_Armor", "Chestplate"}, Color3.fromRGB(0, 255, 0), "Melee")
 end
+
+Workspace.ChildAdded:Connect(function(child)
+    if child:IsA("Model") then
+        if child:FindFirstChild("Humanoid") then
+            ESPModule.createESP(child, child.Name, Color3.fromRGB(255, 255, 0)) -- For NPCs
+        else
+            ESPModule.tagItems({"GoldBar", "BrainInJar", "GoldCup", 
+            "GoldNugget", "GoldPainting", "GoldPlate", "GoldStatue", "GoldWatch", 
+            "SilverPlate", "SilverStatue", "SilverWatch", "StoneStatue", "StrangeMask", 
+            "MoneyBag", "SilverBar", "SilverCup", "SilverNugget", "SilverPainting", 
+            "WoodenPainting", "Fool'sGold"}, Color3.fromRGB(255, 215, 0), "Valuable")
+            
+            ESPModule.tagItems({"Barrel", "Book", "Chair", "Newspaper", 
+		    "Rope", "Teapot", "Vase", "Wheel", "Tumbleweed", "StrangeMachine", 
+		    "Coal", "WantedPoster"}, Color3.fromRGB(150, 150, 150), "Junk")
+		
+		    ESPModule.tagItems({"Banjo", "Bandage", "BarbedWire", 
+		    "Camera", "Mining Helmet", "LightningRod", "SheetMetal", "Snake Oil", 
+		    "Saddle", "HorseCart", "Torch", "GlassBottle"}, Color3.fromRGB(0, 255, 255), "Tool")
+			
+			ESPModule.tagItems({"BrainJar", "WerewolfLimb", "JadeTablet", 
+		    "Notes", "BankNote", "RippedBankNote", "SupplyDepotKey", 
+		    "StrangeMachine", "Fool'sKey", "Crate"}, Color3.fromRGB(180, 0, 255), "Puzzle")
+		    
+			ESPModule.tagItems({"Revolver", "Shotgun", "Rifle", "NavyRevolver", "Mauser", 
+		    "Electrocutioner", "Sawed-OffShotgun", "Blunderbuss", "Bolt-ActionRifle", 
+		    "ElephantRifle", "Crossbow", "MaximGun", "Cannon", "Ballista"}, Color3.fromRGB(255, 0, 0), "Gun")
+			
+			ESPModule.tagItems({"Molotov", "Dynamite", "HolyWater", 
+		    "Crucifix", "BearTrap", "GunpowderBarrel", "Landmine"}, Color3.fromRGB(255, 120, 0), "Utility")
+			
+			ESPModule.tagItems({"ArrowAmmo", "BallistaBolts", "CannonBalls", "ShotgunShells", 
+		    "TurretAmmo", "RifleAmmo", "RevolverAmmo"}, Color3.fromRGB(160, 82, 45), "Ammo")
+			
+			ESPModule.tagItems({"CavalrySword", "JadeSword", "VampireKnife", "Excalibur", "Pickaxe", "Tomahawk", 
+		    "Helmet", "Left Arm_Armor", "Right Arm_Armor", "Chestplate"}, Color3.fromRGB(0, 255, 0), "Melee")
+        end
+    end
+end)
 
 return ESPModule
