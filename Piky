@@ -128,7 +128,7 @@ end
 
 ESPModule.scanMelee = function()
     ESPModule.tagItems({"CavalrySword", "JadeSword", "VampireKnife", "Excalibur", "Pickaxe", "Tomahawk", 
-"Helmet", "Left Shoulder Armor", "Right Shoulder Armor", "Chestplate"}, Color3.fromRGB(0, 255, 0), "Melee")
+"Helmet", "Left Arm_Armor", "Right Arm_Armor", "Chestplate"}, Color3.fromRGB(0, 255, 0), "Melee")
 end
 
 return ESPModule
