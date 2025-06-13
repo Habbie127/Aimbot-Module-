@@ -122,7 +122,7 @@ ESPModule.scanUtilityWeapons = function()
 end
 
 ESPModule.scanAmmo = function()
-    ESPModule.tagItems({"Arrows", "BallistaBolts", "CannonBalls", "ShotgunShells", 
+    ESPModule.tagItems({"ArrowAmmo", "BallistaBolts", "CannonBalls", "ShotgunShells", 
     "TurretAmmo", "RifleAmmo", "RevolverAmmo"}, Color3.fromRGB(160, 82, 45), "Ammo")
 end
 
