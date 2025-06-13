@@ -7,7 +7,6 @@ local RunService = game:GetService("RunService")
 local espFolder = Workspace:FindFirstChild("ESP_Folder") or Instance.new("Folder", Workspace)
 espFolder.Name = "ESP_Folder"
 
--- Clear old ESP
 function ESPModule.clear()
     for _, child in ipairs(espFolder:GetChildren()) do
         child:Destroy()
@@ -30,25 +29,35 @@ local function createBillboard(object, name, color)
 
     local billboard = Instance.new("BillboardGui", highlight)
     billboard.Name = "DistanceLabel"
-    billboard.Size = UDim2.new(0, 100, 0, 40)
+    billboard.Size = UDim2.new(0, 200, 0, 40)  
     billboard.AlwaysOnTop = true
     billboard.StudsOffset = Vector3.new(0, 3, 0)
     billboard.Adornee = adornee
 
-    local label = Instance.new("TextLabel", billboard)
-    label.Size = UDim2.new(1, 0, 1, 0)
-    label.BackgroundTransparency = 1
-    label.TextColor3 = Color3.new(1, 1, 1)
-    label.TextStrokeTransparency = 0
-    label.TextScaled = true
-    label.Font = Enum.Font.SourceSansBold
-    label.Text = name
+    local nameLabel = Instance.new("TextLabel", billboard)
+    nameLabel.Size = UDim2.new(0.5, 0, 1, 0)  
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.TextColor3 = Color3.new(0, 255, 0)
+    nameLabel.TextStrokeTransparency = 0
+    nameLabel.TextScaled = false  
+    nameLabel.Font = Enum.Font.Garamond
+    nameLabel.Text = name
+
+    local distanceLabel = Instance.new("TextLabel", billboard)
+    distanceLabel.Size = UDim2.new(0.5, 0, 1, 0)  
+    distanceLabel.BackgroundTransparency = 1
+    distanceLabel.TextColor3 = Color3.new(1, 1, 1)
+    distanceLabel.TextStrokeTransparency = 0
+    distanceLabel.TextScaled = false  
+    distanceLabel.Font = Enum.Font.Garamond
+    distanceLabel.Position = UDim2.new(0, -100, 0, 0)  
+    distanceLabel.Text = ""  
 
     RunService.RenderStepped:Connect(function()
         if Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and adornee then
-            local position = adornee.Position  -- Now we can safely access Position
+            local position = adornee.Position
             local dist = math.floor((position - Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude)
-            label.Text = name .. " [" .. dist .. "m]"
+            distanceLabel.Text = "[" .. dist .. "m]"  
         end
     end)
 end
@@ -71,7 +80,6 @@ function ESPModule.tagItems(keywordList, color, displayName)
     end
 end
 
--- Category Scans
 ESPModule.scanNPCs = function()
     for _, npc in ipairs(Workspace:GetDescendants()) do
         if npc:IsA("Model") and npc:FindFirstChild("Humanoid") and npc:FindFirstChild("HumanoidRootPart") then
@@ -81,7 +89,7 @@ ESPModule.scanNPCs = function()
 end
 
 ESPModule.scanValuables = function()
-    ESPModule.tagItems({"GoldBar", "BrainInJar", "GoldCup", 
+    ESPModule.tagItems({"BrainInJar", "GoldCup", 
     "GoldNugget", "GoldPainting", "GoldPlate", "GoldStatue", "GoldWatch", 
     "SilverPlate", "SilverStatue", "SilverWatch", "StoneStatue", "StrangeMask", 
     "MoneyBag", "SilverBar", "Silver Cup", "SilverNugget", "SilverPainting", 
