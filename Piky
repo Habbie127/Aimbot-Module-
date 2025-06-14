@@ -13,7 +13,7 @@ local activeScanners = {}
 
 function ESPModule.clear(category)
 	for _, child in ipairs(espFolder:GetChildren()) do
-		if category == nil or child.Name:find("^" .. category) then
+		if category == nil or (child.Name:match("^" .. category .. "_")) then
 			child:Destroy()
 		end
 	end
