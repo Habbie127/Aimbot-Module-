@@ -24,8 +24,7 @@ local function createBillboard(object, name, color, category, isNPC)
     local adornee = object:IsA("Model") and (object.PrimaryPart or object:FindFirstChild("HumanoidRootPart") or object:FindFirstChildWhichIsA("BasePart")) or object
     if not adornee then return end
 
-    -- Create highlight only for NPCs and players
-    if isNPC or (not isNPC and object:IsA("Model") and object:FindFirstChild("Humanoid")) then
+    if isNPC then
         local highlight = Instance.new("Highlight")
         highlight.Name = id
         highlight.Adornee = object -- Adorn the full model
@@ -76,8 +75,7 @@ function ESPModule.scanPlayers()
             if humanoid.Health > 0 then
                 createBillboard(player.Character, player.Name, Color3.fromRGB(0, 255, 0), "Player", true)
             else
-                -- Highlight dead players
-                createBillboard(player.Character, player.Name, Color3.fromRGB(255, 0, 0), "DeadPlayer", true)
+                -- Optionally, you can add logic here to handle dead players if needed
             end
         end
     end
@@ -89,8 +87,7 @@ function ESPModule.scanRuntimeItems()
 
     for _, obj in ipairs(runtimeFolder:GetChildren()) do
         if (obj:IsA("Model") or obj:IsA("BasePart")) and not isHeldByNPC(obj) then
-            -- Do not create highlights for runtime items
-            -- createBillboard(obj, obj.Name, Color3.fromRGB(0, 170, 255), "RuntimeItem", false)
+            createBillboard(obj, obj.Name, Color3.fromRGB(0, 170, 255), "RuntimeItem", false)
         end
     end
 end
