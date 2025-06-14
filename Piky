@@ -11,13 +11,11 @@ espFolder.Name = "ESP_Folder"
 
 local activeScanners = {}
 
--- Track active connections to disconnect when necessary
 local renderConnections = {}
 
 function ESPModule.clear(category)
-    -- Disconnect all RenderStepped connections related to category
     for id, conn in pairs(renderConnections) do
-        if id:match("^" .. (category or "") .. "_") then
+        if category == nil or id:match("^" .. category .. "_") then
             if conn and conn.Connected then
                 conn:Disconnect()
             end
@@ -26,7 +24,7 @@ function ESPModule.clear(category)
     end
 
     for _, child in ipairs(espFolder:GetChildren()) do
-        if category == nil or (child.Name:match("^" .. category .. "_")) then
+        if category == nil or child.Name:match("^" .. category .. "_") then
             child:Destroy()
         end
     end
@@ -38,22 +36,42 @@ local function isHeldByNPC(obj)
 end
 
 local function createBillboard(object, name, color, category, isNPC)
-    local id = category .. "_" .. object:GetDebugId()
-    if espFolder:FindFirstChild(id) then return end
+    -- Before creating, remove any existing ESP with the same category and ID
+    local id
+    if category == "Player" and object:IsA("Model") then
+        -- Use player.UserId for stability
+        local player = Players:GetPlayerFromCharacter(object)
+        if not player then return end
+        id = category .. "_" .. tostring(player.UserId)
+    else
+        id = category .. "_" .. object:GetDebugId()
+    end
 
-    local adornee = object:IsA("Model") and (object.PrimaryPart or object:FindFirstChild("HumanoidRootPart") or object:FindFirstChildWhichIsA("BasePart")) or object
-    if not adornee then return end
+    -- Remove existing highlights and billboards for this id
+    local existingHighlight = espFolder:FindFirstChild(id)
+    if existingHighlight then
+        existingHighlight:Destroy()
+        local conn = renderConnections[id]
+        if conn and conn.Connected then
+            conn:Disconnect()
+        end
+        renderConnections[id] = nil
+    end
 
     if isNPC and object:IsA("Model") then
         local highlight = Instance.new("Highlight")
         highlight.Name = id
         highlight.Adornee = object
         highlight.FillColor = color
-        highlight.FillTransparency = 0.6 -- less transparent for better visibility
+        highlight.FillTransparency = 0.6
         highlight.OutlineColor = Color3.new(0, 0, 0)
         highlight.OutlineTransparency = 0.3
         highlight.Parent = espFolder
     end
+
+    local adornee = object:IsA("Model") and 
+        (object.PrimaryPart or object:FindFirstChild("HumanoidRootPart") or object:FindFirstChildWhichIsA("BasePart")) or object
+    if not adornee then return end
 
     local billboard = Instance.new("BillboardGui")
     billboard.Name = id
@@ -68,11 +86,10 @@ local function createBillboard(object, name, color, category, isNPC)
     label.BackgroundTransparency = 1
     label.TextColor3 = Color3.new(1, 1, 1)
     label.TextStrokeTransparency = 0
-    label.TextScaled = true
+    label.TextScaled = false
     label.Font = Enum.Font.Garamond
     label.Text = ""
 
-    -- Use RunService connection to update distance text
     local connection
     connection = RunService.RenderStepped:Connect(function()
         if not billboard or not billboard.Parent then
@@ -99,26 +116,26 @@ local function createBillboard(object, name, color, category, isNPC)
 end
 
 function ESPModule.scanNPCs()
+    -- Clear NPC ESP before scanning to avoid duplicates
+    ESPModule.clear("NPC")
+
     for _, npc in ipairs(Workspace:GetDescendants()) do
         if npc:IsA("Model") and npc:FindFirstChild("Humanoid") and npc:FindFirstChild("HumanoidRootPart") then
             local cleanName = npc.Name:gsub("^Model_", "")
-            local id = "NPC_" .. npc:GetDebugId()
-            if not espFolder:FindFirstChild(id) then
-                createBillboard(npc, cleanName, Color3.fromRGB(255, 255, 0), "NPC", true)
-            end
+            createBillboard(npc, cleanName, Color3.fromRGB(255, 255, 0), "NPC", true)
         end
     end
 end
 
 function ESPModule.scanPlayers()
+    -- Clear Player ESP before scanning
+    ESPModule.clear("Player")
+
     for _, player in ipairs(Players:GetPlayers()) do
         if player.Character and player.Character:FindFirstChild("Humanoid") and player.Character:FindFirstChild("HumanoidRootPart") then
             local character = player.Character
             local cleanName = player.DisplayName or player.Name
-            local id = "Player_" .. character:GetDebugId()
-            if not espFolder:FindFirstChild(id) then
-                createBillboard(character, cleanName, Color3.fromRGB(0, 255, 128), "Player", true)
-            end
+            createBillboard(character, cleanName, Color3.fromRGB(0, 255, 128), "Player", true)
         end
     end
 end
@@ -127,12 +144,11 @@ function ESPModule.scanRuntimeItems()
     local runtimeFolder = Workspace:FindFirstChild("RuntimeItems")
     if not runtimeFolder then return end
 
+    ESPModule.clear("RuntimeItem")
+
     for _, obj in ipairs(runtimeFolder:GetChildren()) do
         if (obj:IsA("Model") or obj:IsA("BasePart")) and not isHeldByNPC(obj) then
-            local id = "RuntimeItem_" .. obj:GetDebugId()
-            if not espFolder:FindFirstChild(id) then
-                createBillboard(obj, obj.Name, Color3.fromRGB(0, 170, 255), "RuntimeItem", false)
-            end
+            createBillboard(obj, obj.Name, Color3.fromRGB(0, 170, 255), "RuntimeItem", false)
         end
     end
 end
@@ -177,36 +193,28 @@ ESPModule.stopRuntimeItems = function()
     ESPModule.stop("RuntimeItem")
 end
 
--- Clear and rescan NPCs and Players on character spawn (including respawn after death)
 LocalPlayer.CharacterAdded:Connect(function()
     ESPModule.clear("NPC")
     ESPModule.clear("Player")
-    task.wait(3) -- Allow time for full respawn and loading
+    task.wait(3)
     ESPModule.scanNPCs()
     ESPModule.scanPlayers()
 end)
 
--- Detect new NPCs added dynamically and create highlights
 Workspace.DescendantAdded:Connect(function(desc)
+    -- NPC models dynamically added
     if desc:IsA("Model") and desc:FindFirstChild("Humanoid") and desc:FindFirstChild("HumanoidRootPart") then
-        task.wait(1) -- Allow model to fully load
-        local id = "NPC_" .. desc:GetDebugId()
-        if not espFolder:FindFirstChild(id) then
-            local cleanName = desc.Name:gsub("^Model_", "")
-            createBillboard(desc, cleanName, Color3.fromRGB(255, 255, 0), "NPC", true)
-        end
+        task.wait(1)
+        local cleanName = desc.Name:gsub("^Model_", "")
+        createBillboard(desc, cleanName, Color3.fromRGB(255, 255, 0), "NPC", true)
     end
 end)
 
--- Detect players character spawned for dynamic update
 Players.PlayerAdded:Connect(function(player)
     player.CharacterAdded:Connect(function(character)
         task.wait(1)
-        local id = "Player_" .. character:GetDebugId()
-        if not espFolder:FindFirstChild(id) then
-            local displayName = player.DisplayName or player.Name
-            createBillboard(character, displayName, Color3.fromRGB(0, 255, 128), "Player", true)
-        end
+        local displayName = player.DisplayName or player.Name
+        createBillboard(character, displayName, Color3.fromRGB(0, 255, 128), "Player", true)
     end)
 end)
 
