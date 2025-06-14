@@ -30,14 +30,14 @@ local function createBillboard(object, name, color, category, isNPC)
     if not adornee then return end
 
     if isNPC and object:IsA("Model") then
-    local highlight = Instance.new("Highlight")
-    highlight.Name = id
-    highlight.Adornee = object -- Adorn the full model
-    highlight.FillColor = color
-    highlight.FillTransparency = 0.7
-    highlight.OutlineColor = Color3.new(0, 0, 0)
-    highlight.OutlineTransparency = 0.4
-    highlight.Parent = espFolder
+        local highlight = Instance.new("Highlight")
+        highlight.Name = id
+        highlight.Adornee = object -- Adorn the full model
+        highlight.FillColor = color
+        highlight.FillTransparency = 0.7
+        highlight.OutlineColor = Color3.new(0, 0, 0)
+        highlight.OutlineTransparency = 0.4
+        highlight.Parent = espFolder
     end
 
     -- 📍 Billboard (always used)
@@ -66,24 +66,7 @@ local function createBillboard(object, name, color, category, isNPC)
     end)
 end
 
-function ESPModule.tagItems(category, keywordList, color)
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("Model") then
-            local name = obj.Name:lower()
-            if name:find("wheelbase") or name:find("table") then continue end
-            for _, keyword in ipairs(keywordList) do
-                if name:find(keyword:lower()) then
-                    -- Skip if the model is held by an NPC
-                    if isHeldByNPC(obj) then break end
-                    createBillboard(obj, obj.Name, color, category, false)
-                    break
-                end
-            end
-        end
-    end
-end
-
-ESPModule.scanNPCs = function()
+function ESPModule.scanNPCs()
     for _, npc in ipairs(Workspace:GetDescendants()) do
         if npc:IsA("Model") and npc:FindFirstChild("Humanoid") and npc:FindFirstChild("HumanoidRootPart") then
             createBillboard(npc, npc.Name, Color3.fromRGB(255, 255, 0), "NPC", true)
@@ -114,99 +97,21 @@ ESPModule.stopNPCs = function()
     ESPModule.stop("NPC")
 end
 
-ESPModule.startValuables = function()
-    ESPModule.start("Valuable", function()
-        ESPModule.tagItems("Valuable", {
-            "GoldBar", "BrainInJar", "GoldCup", "GoldNugget", "GoldPainting", "GoldPlate", "GoldStatue", "GoldWatch",
-            "SilverPlate", "SilverStatue", "SilverWatch", "StoneStatue", "StrangeMask", "MoneyBag", "SilverBar",
-            "Silver Cup", "SilverNugget", "SilverPainting", "WoodenPainting", "Fool'sGold"
-        }, Color3.fromRGB(255, 215, 0))
-    end)
-end
-ESPModule.stopValuables = function()
-    ESPModule.stop("Valuable")
+-- New function to check runtime spawner items
+ESPModule.checkRuntimeSpawnerItems = function()
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
+            createBillboard(obj, obj.Name, Color3.fromRGB(0, 0, 255), "SpawnerItem", false)
+        end
+    end
 end
 
-ESPModule.startJunk = function()
-    ESPModule.start("Junk", function()
-        ESPModule.tagItems("Junk", {
-            "Barrel", "Book", "Chair", "Newspaper", "Rope", "Teapot", "Vase", "Wheel", "Tumbleweed",
-            "StrangeMachine", "Coal", "WantedPoster"
-        }, Color3.fromRGB(150, 150, 150))
-    end)
-end
-ESPModule.stopJunk = function()
-    ESPModule.stop("Junk")
+ESPModule.startSpawnerItems = function()
+    ESPModule.start("SpawnerItem", ESPModule.checkRuntimeSpawnerItems)
 end
 
-ESPModule.startTools = function()
-    ESPModule.start("Tool", function()
-        ESPModule.tagItems("Tool", {
-            "Banjo", "Bandage", "BarbedWire", "Camera", "Mining Helmet", "LightningRod", "SheetMetal",
-            "Snake Oil", "Saddle", "HorseCart", "Torch", "GlassBottle"
-        }, Color3.fromRGB(0, 255, 255))
-    end)
-end
-ESPModule.stopTools = function()
-    ESPModule.stop("Tool")
-end
-
-ESPModule.startPuzzle = function()
-    ESPModule.start("Puzzle", function()
-        ESPModule.tagItems("Puzzle", {
-            "BrainJar", "WerewolfLimb", "JadeTablet", "Notes", "BankNote", "RippedBankNote", "SupplyDepotKey",
-            "StrangeMachine", "Fool'sKey", "Crate"
-        }, Color3.fromRGB(180, 0, 255))
-    end)
-end
-ESPModule.stopPuzzle = function()
-    ESPModule.stop("Puzzle")
-end
-
-ESPModule.startGuns = function()
-    ESPModule.start("Gun", function()
-        ESPModule.tagItems("Gun", {
-            "Revolver", "Shotgun", "Rifle", "NavyRevolver", "Mauser", "Electrocutioner", "Sawed-OffShotgun",
-            "Blunderbuss", "Bolt-ActionRifle", "ElephantRifle", "Crossbow", "MaximGun", "Cannon", "Ballista"
-        }, Color3.fromRGB(255, 0, 0))
-    end)
-end
-ESPModule.stopGuns = function()
-    ESPModule.stop("Gun")
-end
-
-ESPModule.startUtility = function()
-    ESPModule.start("Utility", function()
-        ESPModule.tagItems("Utility", {
-            "Molotov", "Dynamite", "HolyWater", "Crucifix", "BearTrap", "GunpowderBarrel", "Landmine"
-        }, Color3.fromRGB(255, 120, 0))
-    end)
-end
-ESPModule.stopUtility = function()
-    ESPModule.stop("Utility")
-end
-
-ESPModule.startAmmo = function()
-    ESPModule.start("Ammo", function()
-        ESPModule.tagItems("Ammo", {
-            "ArrowAmmo", "BallistaBolts", "CannonBalls", "ShotgunShells", "TurretAmmo", "RifleAmmo", "RevolverAmmo"
-        }, Color3.fromRGB(160, 82, 45))
-    end)
-end
-ESPModule.stopAmmo = function()
-    ESPModule.stop("Ammo")
-end
-
-ESPModule.startMelee = function()
-    ESPModule.start("Melee", function()
-        ESPModule.tagItems("Melee", {
-            "CavalrySword", "JadeSword", "VampireKnife", "Excalibur", "Pickaxe", "Tomahawk", "Helmet",
-            "Left Arm_Armor", "Right Arm_Armor", "Chestplate"
-        }, Color3.fromRGB(0, 255, 0))
-    end)
-end
-ESPModule.stopMelee = function()
-    ESPModule.stop("Melee")
+ESPModule.stopSpawnerItems = function()
+    ESPModule.stop("SpawnerItem")
 end
 
 return ESPModule
