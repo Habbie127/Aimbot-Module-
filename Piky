@@ -5,35 +5,13 @@ local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
+
 local espFolder = Workspace:FindFirstChild("ESP_Folder") or Instance.new("Folder", Workspace)
 espFolder.Name = "ESP_Folder"
 
 local activeScanners = {}
 
-local IGNORED_NAMES = {
-	["Rock"] = true,
-	["TrainTrack"] = true,
-	["Rail"] = true,
-	["Stone"] = true,
-	["Metal"] = true
-}
-
--- Utility: Check for valid NPC model
-local function isValidNPC(model)
-	return model:IsA("Model") and model:FindFirstChild("Humanoid") and model:FindFirstChild("HumanoidRootPart")
-end
-
--- Utility: Check if this item should be ignored for highlights
-local function isIgnored(object)
-	for name, _ in pairs(IGNORED_NAMES) do
-		if object.Name:lower():find(name:lower()) then
-			return true
-		end
-	end
-	return false
-end
-
--- Cleanup ESP
+-- Clear existing ESP for a category
 function ESPModule.clear(category)
 	for _, child in ipairs(espFolder:GetChildren()) do
 		if category == nil or child.Name:find("^" .. category) then
@@ -42,13 +20,13 @@ function ESPModule.clear(category)
 	end
 end
 
--- Check if an item is held by an NPC (e.g., weapons)
+-- Check if a part is being held by an NPC
 local function isHeldByNPC(obj)
 	local parent = obj.Parent
 	return parent and parent:IsA("Model") and parent:FindFirstChild("Humanoid")
 end
 
--- Core Billboard and Highlight logic
+-- Create both Highlight and Billboard
 local function createBillboard(object, name, color, category, isNPC)
 	local id = category .. "_" .. object:GetDebugId()
 	if espFolder:FindFirstChild(id) then return end
@@ -56,8 +34,7 @@ local function createBillboard(object, name, color, category, isNPC)
 	local adornee = object:IsA("Model") and (object.PrimaryPart or object:FindFirstChild("HumanoidRootPart") or object:FindFirstChildWhichIsA("BasePart")) or object
 	if not adornee then return end
 
-	-- Highlight ONLY if NPC or player, and NOT ignored
-	if isNPC and not isIgnored(object) then
+	if isNPC and object:IsA("Model") then
 		local highlight = Instance.new("Highlight")
 		highlight.Name = id
 		highlight.Adornee = object
@@ -68,7 +45,6 @@ local function createBillboard(object, name, color, category, isNPC)
 		highlight.Parent = espFolder
 	end
 
-	-- Billboard for all valid items
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = id
 	billboard.Size = UDim2.new(0, 200, 0, 40)
@@ -77,7 +53,7 @@ local function createBillboard(object, name, color, category, isNPC)
 	billboard.Adornee = adornee
 	billboard.Parent = espFolder
 
-	local label = Instance.new("TextLabel")
+	local label = Instance.new("TextLabel", billboard)
 	label.Size = UDim2.new(1, 0, 1, 0)
 	label.BackgroundTransparency = 1
 	label.TextColor3 = Color3.new(1, 1, 1)
@@ -85,9 +61,15 @@ local function createBillboard(object, name, color, category, isNPC)
 	label.TextScaled = false
 	label.Font = Enum.Font.Garamond
 	label.Text = ""
-	label.Parent = billboard
 
-	RunService.RenderStepped:Connect(function()
+	-- Distance updater
+	local connection
+	connection = RunService.RenderStepped:Connect(function()
+		if not billboard or not billboard.Parent then
+			if connection then connection:Disconnect() end
+			return
+		end
+
 		if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and adornee then
 			local dist = math.floor((adornee.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude)
 			label.Text = name .. " [" .. dist .. "m]"
@@ -98,31 +80,30 @@ end
 -- NPC Scanner
 function ESPModule.scanNPCs()
 	for _, npc in ipairs(Workspace:GetDescendants()) do
-		if isValidNPC(npc) and not isIgnored(npc) then
+		if npc:IsA("Model") and npc:FindFirstChild("Humanoid") and npc:FindFirstChild("HumanoidRootPart") then
 			createBillboard(npc, npc.Name, Color3.fromRGB(255, 255, 0), "NPC", true)
 		end
 	end
 end
 
--- Runtime Items Scanner
+-- Runtime item scanner
 function ESPModule.scanRuntimeItems()
 	local runtimeFolder = Workspace:FindFirstChild("RuntimeItems")
 	if not runtimeFolder then return end
 
 	for _, obj in ipairs(runtimeFolder:GetChildren()) do
-		if (obj:IsA("Model") or obj:IsA("BasePart")) and not isHeldByNPC(obj) and not isIgnored(obj) then
+		if (obj:IsA("Model") or obj:IsA("BasePart")) and not isHeldByNPC(obj) then
 			createBillboard(obj, obj.Name, Color3.fromRGB(0, 170, 255), "RuntimeItem", false)
 		end
 	end
 end
 
--- Scanner Control
+-- Add scanner loop
 function ESPModule.start(category, scanFunc)
 	if activeScanners[category] then return end
 	activeScanners[category] = true
 	task.spawn(function()
 		while activeScanners[category] do
-			ESPModule.clear(category)
 			scanFunc()
 			task.wait(1)
 		end
@@ -149,5 +130,20 @@ end
 ESPModule.stopRuntimeItems = function()
 	ESPModule.stop("RuntimeItem")
 end
+
+-- 🛠️ Auto re-scan on Player Respawn
+LocalPlayer.CharacterAdded:Connect(function()
+	task.wait(3) -- Give time for full respawn
+	ESPModule.clear("NPC")
+	ESPModule.scanNPCs()
+end)
+
+-- 🛠️ Auto re-add highlights on streamed NPCs
+Workspace.DescendantAdded:Connect(function(desc)
+	if desc:IsA("Model") and desc:FindFirstChild("Humanoid") and desc:FindFirstChild("HumanoidRootPart") then
+		task.wait(1) -- Allow model to fully load
+		createBillboard(desc, desc.Name, Color3.fromRGB(255, 255, 0), "NPC", true)
+	end
+end)
 
 return ESPModule
