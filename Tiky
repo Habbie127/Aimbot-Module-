@@ -89,6 +89,13 @@ function AimbotModule.updateFOVGuiVisibility()
     end
 end
 
+function AimbotModule.getPredictedPosition(targetHRP)
+    local velocity = targetHRP.Velocity
+    local distance = (Camera.CFrame.Position - targetHRP.Position).Magnitude
+    local travelTime = distance / 100 
+    return targetHRP.Position + velocity * travelTime
+end
+
 function AimbotModule.getClosestEnemy()
     local character = LocalPlayer.Character
     if not character or not character:FindFirstChild("HumanoidRootPart") then return nil end
@@ -139,7 +146,8 @@ end
 function AimbotModule.aimAtEnemy()
     local target = AimbotModule.getClosestEnemy()
     if target and target:FindFirstChild("HumanoidRootPart") then
-        Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.HumanoidRootPart.Position)
+        local predictedPosition = AimbotModule.getPredictedPosition(target.HumanoidRootPart)
+        Camera.CFrame = CFrame.new(Camera.CFrame.Position, predictedPosition)
     end
 end
 
