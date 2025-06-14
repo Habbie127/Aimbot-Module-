@@ -4,114 +4,150 @@ local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 
+local LocalPlayer = Players.LocalPlayer
 local espFolder = Workspace:FindFirstChild("ESP_Folder") or Instance.new("Folder", Workspace)
 espFolder.Name = "ESP_Folder"
 
 local activeScanners = {}
 
+local IGNORED_NAMES = {
+	["Rock"] = true,
+	["TrainTrack"] = true,
+	["Rail"] = true,
+	["Stone"] = true,
+	["Metal"] = true
+}
+
+-- Utility: Check for valid NPC model
+local function isValidNPC(model)
+	return model:IsA("Model") and model:FindFirstChild("Humanoid") and model:FindFirstChild("HumanoidRootPart")
+end
+
+-- Utility: Check if this item should be ignored for highlights
+local function isIgnored(object)
+	for name, _ in pairs(IGNORED_NAMES) do
+		if object.Name:lower():find(name:lower()) then
+			return true
+		end
+	end
+	return false
+end
+
+-- Cleanup ESP
 function ESPModule.clear(category)
-    for _, child in ipairs(espFolder:GetChildren()) do
-        if category == nil or child.Name:find("^" .. category) then
-            child:Destroy()
-        end
-    end
+	for _, child in ipairs(espFolder:GetChildren()) do
+		if category == nil or child.Name:find("^" .. category) then
+			child:Destroy()
+		end
+	end
 end
 
+-- Check if an item is held by an NPC (e.g., weapons)
 local function isHeldByNPC(obj)
-    local parent = obj.Parent
-    return parent and parent:IsA("Model") and parent:FindFirstChild("Humanoid")
+	local parent = obj.Parent
+	return parent and parent:IsA("Model") and parent:FindFirstChild("Humanoid")
 end
 
+-- Core Billboard and Highlight logic
 local function createBillboard(object, name, color, category, isNPC)
-    local id = category .. "_" .. object:GetDebugId()
-    if espFolder:FindFirstChild(id) then return end
+	local id = category .. "_" .. object:GetDebugId()
+	if espFolder:FindFirstChild(id) then return end
 
-    local adornee = object:IsA("Model") and (object.PrimaryPart or object:FindFirstChild("HumanoidRootPart") or object:FindFirstChildWhichIsA("BasePart")) or object
-    if not adornee then return end
+	local adornee = object:IsA("Model") and (object.PrimaryPart or object:FindFirstChild("HumanoidRootPart") or object:FindFirstChildWhichIsA("BasePart")) or object
+	if not adornee then return end
 
-    if isNPC and object:IsA("Model") then
-        local highlight = Instance.new("Highlight")
-        highlight.Name = id
-        highlight.Adornee = object -- Adorn the full model
-        highlight.FillColor = color
-        highlight.FillTransparency = 0.7
-        highlight.OutlineColor = Color3.new(0, 0, 0)
-        highlight.OutlineTransparency = 0.4
-        highlight.Parent = espFolder
-    end
+	-- Highlight ONLY if NPC or player, and NOT ignored
+	if isNPC and not isIgnored(object) then
+		local highlight = Instance.new("Highlight")
+		highlight.Name = id
+		highlight.Adornee = object
+		highlight.FillColor = color
+		highlight.FillTransparency = 0.7
+		highlight.OutlineColor = Color3.new(0, 0, 0)
+		highlight.OutlineTransparency = 0.4
+		highlight.Parent = espFolder
+	end
 
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = id
-    billboard.Size = UDim2.new(0, 200, 0, 40)
-    billboard.AlwaysOnTop = true
-    billboard.StudsOffset = Vector3.new(0, 1.5, 0)
-    billboard.Adornee = adornee
-    billboard.Parent = espFolder
+	-- Billboard for all valid items
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = id
+	billboard.Size = UDim2.new(0, 200, 0, 40)
+	billboard.AlwaysOnTop = true
+	billboard.StudsOffset = Vector3.new(0, 1.5, 0)
+	billboard.Adornee = adornee
+	billboard.Parent = espFolder
 
-    local label = Instance.new("TextLabel", billboard)
-    label.Size = UDim2.new(1, 0, 1, 0)
-    label.BackgroundTransparency = 1
-    label.TextColor3 = Color3.new(1, 1, 1)
-    label.TextStrokeTransparency = 0
-    label.TextScaled = false
-    label.Font = Enum.Font.Garamond
-    label.Text = ""
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, 0, 1, 0)
+	label.BackgroundTransparency = 1
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.TextStrokeTransparency = 0
+	label.TextScaled = false
+	label.Font = Enum.Font.Garamond
+	label.Text = ""
+	label.Parent = billboard
 
-    RunService.RenderStepped:Connect(function()
-        if Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and adornee then
-            local dist = math.floor((adornee.Position - Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude)
-            label.Text = name .. " [" .. dist .. "m]"
-        end
-    end)
+	RunService.RenderStepped:Connect(function()
+		if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and adornee then
+			local dist = math.floor((adornee.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude)
+			label.Text = name .. " [" .. dist .. "m]"
+		end
+	end)
 end
 
+-- NPC Scanner
 function ESPModule.scanNPCs()
-    for _, npc in ipairs(Workspace:GetDescendants()) do
-        if npc:IsA("Model") and npc:FindFirstChild("Humanoid") and npc:FindFirstChild("HumanoidRootPart") then
-            createBillboard(npc, npc.Name, Color3.fromRGB(255, 255, 0), "NPC", true)
-        end
-    end
+	for _, npc in ipairs(Workspace:GetDescendants()) do
+		if isValidNPC(npc) and not isIgnored(npc) then
+			createBillboard(npc, npc.Name, Color3.fromRGB(255, 255, 0), "NPC", true)
+		end
+	end
 end
 
+-- Runtime Items Scanner
 function ESPModule.scanRuntimeItems()
-    local runtimeFolder = Workspace:FindFirstChild("RuntimeItems")
-    if not runtimeFolder then return end
+	local runtimeFolder = Workspace:FindFirstChild("RuntimeItems")
+	if not runtimeFolder then return end
 
-    for _, obj in ipairs(runtimeFolder:GetChildren()) do
-        if (obj:IsA("Model") or obj:IsA("BasePart")) and not isHeldByNPC(obj) then
-            createBillboard(obj, obj.Name, Color3.fromRGB(0, 170, 255), "RuntimeItem", false)
-        end
-    end
+	for _, obj in ipairs(runtimeFolder:GetChildren()) do
+		if (obj:IsA("Model") or obj:IsA("BasePart")) and not isHeldByNPC(obj) and not isIgnored(obj) then
+			createBillboard(obj, obj.Name, Color3.fromRGB(0, 170, 255), "RuntimeItem", false)
+		end
+	end
 end
 
+-- Scanner Control
 function ESPModule.start(category, scanFunc)
-    if activeScanners[category] then return end
-    activeScanners[category] = true
-    task.spawn(function()
-        while activeScanners[category] do
-            scanFunc()
-            task.wait(1)
-        end
-    end)
+	if activeScanners[category] then return end
+	activeScanners[category] = true
+	task.spawn(function()
+		while activeScanners[category] do
+			ESPModule.clear(category)
+			scanFunc()
+			task.wait(1)
+		end
+	end)
 end
 
 function ESPModule.stop(category)
-    activeScanners[category] = nil
-    ESPModule.clear(category)
+	activeScanners[category] = nil
+	ESPModule.clear(category)
 end
 
 ESPModule.startNPCs = function()
-    ESPModule.start("NPC", ESPModule.scanNPCs)
+	ESPModule.start("NPC", ESPModule.scanNPCs)
 end
+
 ESPModule.stopNPCs = function()
-    ESPModule.stop("NPC")
+	ESPModule.stop("NPC")
 end
 
 ESPModule.startRuntimeItems = function()
-    ESPModule.start("RuntimeItem", ESPModule.scanRuntimeItems)
+	ESPModule.start("RuntimeItem", ESPModule.scanRuntimeItems)
 end
+
 ESPModule.stopRuntimeItems = function()
-    ESPModule.stop("RuntimeItem")
+	ESPModule.stop("RuntimeItem")
 end
 
 return ESPModule
