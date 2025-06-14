@@ -40,7 +40,6 @@ local function createBillboard(object, name, color, category, isNPC)
         highlight.Parent = espFolder
     end
 
-    -- 📍 Billboard (always used)
     local billboard = Instance.new("BillboardGui")
     billboard.Name = id
     billboard.Size = UDim2.new(0, 200, 0, 40)
@@ -74,6 +73,17 @@ function ESPModule.scanNPCs()
     end
 end
 
+function ESPModule.scanRuntimeItems()
+    local runtimeFolder = Workspace:FindFirstChild("RuntimeItems")
+    if not runtimeFolder then return end
+
+    for _, obj in ipairs(runtimeFolder:GetChildren()) do
+        if (obj:IsA("Model") or obj:IsA("BasePart")) and not isHeldByNPC(obj) then
+            createBillboard(obj, obj.Name, Color3.fromRGB(0, 170, 255), "RuntimeItem", false)
+        end
+    end
+end
+
 function ESPModule.start(category, scanFunc)
     if activeScanners[category] then return end
     activeScanners[category] = true
@@ -97,21 +107,11 @@ ESPModule.stopNPCs = function()
     ESPModule.stop("NPC")
 end
 
--- New function to check runtime spawner items
-ESPModule.checkRuntimeSpawnerItems = function()
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
-            createBillboard(obj, obj.Name, Color3.fromRGB(0, 0, 255), "SpawnerItem", false)
-        end
-    end
+ESPModule.startRuntimeItems = function()
+    ESPModule.start("RuntimeItem", ESPModule.scanRuntimeItems)
 end
-
-ESPModule.startSpawnerItems = function()
-    ESPModule.start("SpawnerItem", ESPModule.checkRuntimeSpawnerItems)
-end
-
-ESPModule.stopSpawnerItems = function()
-    ESPModule.stop("SpawnerItem")
+ESPModule.stopRuntimeItems = function()
+    ESPModule.stop("RuntimeItem")
 end
 
 return ESPModule
