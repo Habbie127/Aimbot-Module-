@@ -92,7 +92,7 @@ end
 function AimbotModule.getPredictedPosition(targetHRP)
     local velocity = targetHRP.Velocity
     local distance = (Camera.CFrame.Position - targetHRP.Position).Magnitude
-    local travelTime = distance / 100 
+    local travelTime = distance / 60 
     return targetHRP.Position + velocity * travelTime
 end
 
