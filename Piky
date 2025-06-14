@@ -17,11 +17,6 @@ function ESPModule.clear(category)
     end
 end
 
-local function isHeldByNPC(obj)
-    local parent = obj.Parent
-    return parent and parent:IsA("Model") and parent:FindFirstChild("Humanoid")
-end
-
 local function createBillboard(object, name, color, category, isNPC)
     local id = category .. "_" .. object:GetDebugId()
     if espFolder:FindFirstChild(id) then return end
@@ -29,7 +24,7 @@ local function createBillboard(object, name, color, category, isNPC)
     local adornee = object:IsA("Model") and (object.PrimaryPart or object:FindFirstChild("HumanoidRootPart") or object:FindFirstChildWhichIsA("BasePart")) or object
     if not adornee then return end
 
-    if isNPC and object:IsA("Model") then
+    if isNPC then
         local highlight = Instance.new("Highlight")
         highlight.Name = id
         highlight.Adornee = object -- Adorn the full model
@@ -73,6 +68,19 @@ function ESPModule.scanNPCs()
     end
 end
 
+function ESPModule.scanPlayers()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Character and player.Character:FindFirstChild("Humanoid") then
+            local humanoid = player.Character.Humanoid
+            if humanoid.Health > 0 then
+                createBillboard(player.Character, player.Name, Color3.fromRGB(0, 255, 0), "Player", true)
+            else
+                -- Optionally, you can add logic here to handle dead players if needed
+            end
+        end
+    end
+end
+
 function ESPModule.scanRuntimeItems()
     local runtimeFolder = Workspace:FindFirstChild("RuntimeItems")
     if not runtimeFolder then return end
@@ -105,6 +113,13 @@ ESPModule.startNPCs = function()
 end
 ESPModule.stopNPCs = function()
     ESPModule.stop("NPC")
+end
+
+ESPModule.startPlayers = function()
+    ESPModule.start("Player", ESPModule.scanPlayers)
+end
+ESPModule.stopPlayers = function()
+    ESPModule.stop("Player")
 end
 
 ESPModule.startRuntimeItems = function()
