@@ -11,7 +11,6 @@ espFolder.Name = "ESP_Folder"
 
 local activeScanners = {}
 
--- Clear existing ESP for a category
 function ESPModule.clear(category)
 	for _, child in ipairs(espFolder:GetChildren()) do
 		if category == nil or child.Name:find("^" .. category) then
@@ -20,13 +19,11 @@ function ESPModule.clear(category)
 	end
 end
 
--- Check if a part is being held by an NPC
 local function isHeldByNPC(obj)
 	local parent = obj.Parent
 	return parent and parent:IsA("Model") and parent:FindFirstChild("Humanoid")
 end
 
--- Create both Highlight and Billboard
 local function createBillboard(object, name, color, category, isNPC)
 	local id = category .. "_" .. object:GetDebugId()
 	if espFolder:FindFirstChild(id) then return end
@@ -62,7 +59,6 @@ local function createBillboard(object, name, color, category, isNPC)
 	label.Font = Enum.Font.Garamond
 	label.Text = ""
 
-	-- Distance updater
 	local connection
 	connection = RunService.RenderStepped:Connect(function()
 		if not billboard or not billboard.Parent then
@@ -77,16 +73,15 @@ local function createBillboard(object, name, color, category, isNPC)
 	end)
 end
 
--- NPC Scanner
 function ESPModule.scanNPCs()
 	for _, npc in ipairs(Workspace:GetDescendants()) do
 		if npc:IsA("Model") and npc:FindFirstChild("Humanoid") and npc:FindFirstChild("HumanoidRootPart") then
-			createBillboard(npc, npc.Name, Color3.fromRGB(255, 255, 0), "NPC", true)
+			local cleanName = npc.Name:gsub("^Model_", "")
+			createBillboard(npc, cleanName, Color3.fromRGB(255, 255, 0), "NPC", true)
 		end
 	end
 end
 
--- Runtime item scanner
 function ESPModule.scanRuntimeItems()
 	local runtimeFolder = Workspace:FindFirstChild("RuntimeItems")
 	if not runtimeFolder then return end
@@ -98,7 +93,6 @@ function ESPModule.scanRuntimeItems()
 	end
 end
 
--- Add scanner loop
 function ESPModule.start(category, scanFunc)
 	if activeScanners[category] then return end
 	activeScanners[category] = true
@@ -131,18 +125,17 @@ ESPModule.stopRuntimeItems = function()
 	ESPModule.stop("RuntimeItem")
 end
 
--- 🛠️ Auto re-scan on Player Respawn
 LocalPlayer.CharacterAdded:Connect(function()
 	task.wait(3) -- Give time for full respawn
 	ESPModule.clear("NPC")
 	ESPModule.scanNPCs()
 end)
 
--- 🛠️ Auto re-add highlights on streamed NPCs
 Workspace.DescendantAdded:Connect(function(desc)
 	if desc:IsA("Model") and desc:FindFirstChild("Humanoid") and desc:FindFirstChild("HumanoidRootPart") then
 		task.wait(1) -- Allow model to fully load
-		createBillboard(desc, desc.Name, Color3.fromRGB(255, 255, 0), "NPC", true)
+		local cleanName = desc.Name:gsub("^Model_", "")
+		createBillboard(desc, cleanName, Color3.fromRGB(255, 255, 0), "NPC", true)
 	end
 end)
 
