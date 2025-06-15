@@ -1,4 +1,4 @@
-local allowedPlaceId = 116495829188952 
+local allowedPlaceId = 70876832253163 
 if game.PlaceId ~= allowedPlaceId then
     local gui = Instance.new("ScreenGui")
     gui.Name = "KeySystemBlockedGui"
@@ -19,7 +19,7 @@ if game.PlaceId ~= allowedPlaceId then
     local text = Instance.new("TextLabel")
     text.Size = UDim2.new(1, 0, 1, 0)
     text.BackgroundTransparency = 1
-    text.Text = " •  This game is not supported by this script  • "
+    text.Text = " •  This game is not supported by this script or if you in dead rails lobby then execute in match/ingame • "
     text.TextColor3 = Color3.new(1, 1, 1)
     text.TextScaled = true
     text.Font = Enum.Font.Garamond
