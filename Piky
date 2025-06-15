@@ -163,6 +163,8 @@ local function onNPCDied(npc)
 end
 
 Workspace.DescendantAdded:Connect(function(desc)
+    if not activeScanners["NPC"] then return end
+
     if desc:IsA("Model") and desc:FindFirstChild("Humanoid") and desc:FindFirstChild("HumanoidRootPart") then
         onNPCDied(desc)
         task.wait(1)
@@ -246,12 +248,13 @@ LocalPlayer.CharacterAdded:Connect(function()
     ESPModule.clear("NPC")
     ESPModule.clear("Player")
     task.wait(3)
-    ESPModule.scanNPCs()
-    ESPModule.scanPlayers()
+    if activeScanners["NPC"] then ESPModule.scanNPCs() end
+    if activeScanners["Player"] then ESPModule.scanPlayers() end
 end)
 
 Players.PlayerAdded:Connect(function(player)
     player.CharacterAdded:Connect(function(character)
+        if not activeScanners["Player"] then return end
         task.wait(1)
         local displayName = player.DisplayName or player.Name
         createBillboard(character, displayName, Color3.fromRGB(0, 255, 128), "Player", true)
