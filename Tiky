@@ -36,7 +36,13 @@ local function isPlayerModel(model)
 end
 
 local function shouldIgnore(model)
-    return isPlayerModel(model) or table.find(IgnoreNames, model.Name)
+    if isPlayerModel(model) then
+        return true
+    end
+    if table.find(IgnoreNames, model.Name) then
+        return true
+    end
+    return false
 end
 
 local function isVisible(targetPart)
@@ -89,13 +95,6 @@ function AimbotModule.updateFOVGuiVisibility()
     end
 end
 
-function AimbotModule.getPredictedPosition(targetHRP)
-    local velocity = targetHRP.Velocity
-    local distance = (Camera.CFrame.Position - targetHRP.Position).Magnitude
-    local travelTime = distance / 60 
-    return targetHRP.Position + velocity * travelTime
-end
-
 function AimbotModule.getClosestEnemy()
     local character = LocalPlayer.Character
     if not character or not character:FindFirstChild("HumanoidRootPart") then return nil end
@@ -146,8 +145,9 @@ end
 function AimbotModule.aimAtEnemy()
     local target = AimbotModule.getClosestEnemy()
     if target and target:FindFirstChild("HumanoidRootPart") then
-        local predictedPosition = AimbotModule.getPredictedPosition(target.HumanoidRootPart)
-        Camera.CFrame = CFrame.new(Camera.CFrame.Position, predictedPosition)
+        local targetPosition = target.HumanoidRootPart.Position
+        local currentCameraCFrame = Camera.CFrame
+        Camera.CFrame = CFrame.new(currentCameraCFrame.Position, targetPosition)
     end
 end
 
