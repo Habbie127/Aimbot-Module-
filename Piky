@@ -48,6 +48,13 @@ local function isHeldByNPC(obj)
     return parent and parent:IsA("Model") and parent:FindFirstChild("Humanoid")
 end
 
+local function isNPCModel(model)
+    if model and model:IsA("Model") and model:FindFirstChild("Humanoid") then
+        return true
+    end
+    return false
+end
+
 local function getESPId(category, object)
     if category == "Player" and object:IsA("Model") then
         local player = Players:GetPlayerFromCharacter(object)
@@ -135,7 +142,7 @@ function ESPModule.scanNPCs()
     for _, npc in ipairs(Workspace:GetDescendants()) do
         if npc:IsA("Model") and npc:FindFirstChild("Humanoid") and npc:FindFirstChild("HumanoidRootPart") then
             local humanoid = npc:FindFirstChild("Humanoid")
-            if humanoid and humanoid.Health > 0 then  -- Only live NPCs
+            if humanoid and humanoid.Health > 0 then
                 local cleanName = npc.Name:gsub("^Model_", "")
                 createBillboard(npc, cleanName, Color3.fromRGB(255, 255, 0), "NPC", true)
             end
@@ -186,7 +193,10 @@ function ESPModule.scanRuntimeItems()
     ESPModule.clear("RuntimeItem")
 
     for _, obj in ipairs(runtimeFolder:GetChildren()) do
-        if (obj:IsA("Model") or obj:IsA("BasePart")) and not isHeldByNPC(obj) then
+        -- Skip any NPC models inside RuntimeItems to prevent duplicate ESP for NPCs
+        if (obj:IsA("Model") and isNPCModel(obj)) then
+            -- Skip NPC models inside RuntimeItems
+        elseif (obj:IsA("Model") or obj:IsA("BasePart")) and not isHeldByNPC(obj) then
             createBillboard(obj, obj.Name, Color3.fromRGB(0, 170, 255), "RuntimeItem", false)
         end
     end
