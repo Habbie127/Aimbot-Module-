@@ -1,4 +1,4 @@
-local allowedPlaceId = 3678761576 -- 🔁 Replace with your real game ID
+local allowedPlaceId = 3678761576 
 if game.PlaceId ~= allowedPlaceId then
     local gui = Instance.new("ScreenGui")
     gui.Name = "KeySystemBlockedGui"
@@ -19,7 +19,7 @@ if game.PlaceId ~= allowedPlaceId then
     local text = Instance.new("TextLabel")
     text.Size = UDim2.new(1, 0, 1, 0)
     text.BackgroundTransparency = 1
-    text.Text = "🚫 This game is not supported by this script."
+    text.Text = " •  This game is not supported by this script  • "
     text.TextColor3 = Color3.new(1, 1, 1)
     text.TextScaled = true
     text.Font = Enum.Font.Garamond
@@ -33,136 +33,180 @@ if game.PlaceId ~= allowedPlaceId then
 end
 
 local KeySystem = {}
+
 local HttpService = game:GetService("HttpService")
 
-local service = 4361 
-local secret = "b6792e56-46d0-4519-a5a7-1b117076e0a3" 
-local useNonce = true
-local cachedLink, cachedTime = "", 0
 local requestSending = false
+local cachedLink, cachedTime = "", 0
 
-local function lEncode(data)
-    return HttpService:JSONEncode(data)
+-- Use environment functions
+local fSetClipboard = setclipboard or toclipboard
+local fRequest = request or http_request or syn.request
+local fChar = string.char
+local fToString = tostring
+local fSub = string.sub
+local fOsTime = os.time
+local fRandom = math.random
+local fFloor = math.floor
+local fGetHwid = gethwid or function() return game:GetService("Players").LocalPlayer.UserId end
+
+local onMessage = function(message)
+	pcall(function()
+		game:GetService("StarterGui"):SetCore("ChatMakeSystemMessage", { Text = message; })
+	end)
 end
 
-local function lDecode(data)
-    return HttpService:JSONDecode(data)
+local function encode(data)
+	return HttpService:JSONEncode(data)
 end
 
-local function lDigest(input)
-    local inputStr = tostring(input)
-    local hash = {}
-    for i = 1, #inputStr do
-        table.insert(hash, string.byte(inputStr, i))
-    end
-    local hashHex = ""
-    for _, byte in ipairs(hash) do
-        hashHex = hashHex .. string.format("%02x", byte)
-    end
-    return hashHex
+local function decode(data)
+	return HttpService:JSONDecode(data)
+end
+
+local function digest(input)
+	local inputStr = fToString(input)
+	local hash = {}
+	for i = 1, #inputStr do
+		table.insert(hash, string.byte(inputStr, i))
+	end
+	local hex = ""
+	for _, byte in ipairs(hash) do
+		hex = hex .. string.format("%02x", byte)
+	end
+	return hex
 end
 
 local function generateNonce()
-    local str = ""
-    for _ = 1, 16 do
-        str = str .. string.char(math.random(97, 122))
-    end
-    return str
+	local str = ""
+	for _ = 1, 16 do
+		str = str .. fChar(fFloor(fRandom() * 26) + 97)
+	end
+	return str
 end
 
-local function cacheLink()
-    if cachedTime + (20 * 60) < os.time() then
-        local response = request({
-            Url = "https://api.platoboost.com/public/start",
-            Method = "POST",
-            Body = lEncode({
-                service = service,
-                identifier = lDigest(game.Players.LocalPlayer.UserId)
-            }),
-            Headers = {
-                ["Content-Type"] = "application/json"
-            }
-        })
+function KeySystem.init(service, secret, useNonce)
+	local host = "https://api.platoboost.com"
+	local response = fRequest({ Url = host .. "/public/connectivity", Method = "GET" })
+	if response.StatusCode ~= 200 and response.StatusCode ~= 429 then
+		host = "https://api.platoboost.net"
+	end
 
-        if response.StatusCode == 200 then
-            local decoded = lDecode(response.Body)
-            if decoded.success then
-                cachedLink = decoded.data.url
-                cachedTime = os.time()
-                return true, cachedLink
-            else
-                return false, decoded.message
-            end
-        end
-    else
-        return true, cachedLink
-    end
+	KeySystem._config = {
+		host = host,
+		service = service,
+		secret = secret,
+		useNonce = useNonce
+	}
 end
 
-function KeySystem.redeemKey(key)
-    local nonce = generateNonce()
-    local endpoint = "https://api.platoboost.com/public/redeem/" .. tostring(service)
-    local body = {
-        identifier = lDigest(game.Players.LocalPlayer.UserId),
-        key = key
-    }
+local MAX_LINK_LENGTH = 1000
 
-    if useNonce then
-        body.nonce = nonce
-    end
-
-    local response = request({
-        Url = endpoint,
-        Method = "POST",
-        Body = lEncode(body),
-        Headers = {
-            ["Content-Type"] = "application/json"
-        }
-    })
-
-    if response.StatusCode == 200 then
-        local decoded = lDecode(response.Body)
-        if decoded.success and decoded.data.valid then
-            return true
-        else
-            return false, decoded.message
-        end
-    else
-        return false, "Server error"
-    end
+function KeySystem.copyLink()
+	local timeNow = fOsTime()
+	if cachedTime + 1600 < timeNow then
+		local cfg = KeySystem._config
+		local res = fRequest({
+			Url = cfg.host .. "/public/start",
+			Method = "POST",
+			Headers = { ["Content-Type"] = "application/json" },
+			Body = encode({
+				service = cfg.service,
+				identifier = digest(fGetHwid())
+			})
+		})
+		if res.StatusCode == 200 then
+			local data = decode(res.Body)
+			if data.success then
+				cachedLink = data.data.url
+				if #cachedLink > MAX_LINK_LENGTH then
+                    onMessage("Generated link is too long.")
+                    return false
+                end
+				cachedTime = timeNow
+			else
+				onMessage(data.message)
+			end
+		else
+			onMessage("Rate limit or failed to fetch link.")
+		end
+	end
+	if fSetClipboard then
+		fSetClipboard(cachedLink)
+	end
 end
 
 function KeySystem.verifyKey(key)
-    if requestSending then
-        return false, "A request is already being sent."
-    else
-        requestSending = true
-    end
+	if requestSending then
+		onMessage("Please wait for current request.")
+		return false
+	end
+	requestSending = true
 
-    local nonce = generateNonce()
-    local endpoint = "https://api.platoboost.com/public/whitelist/" .. tostring(service) .. "?identifier=" .. lDigest(game.Players.LocalPlayer.UserId) .. "&key=" .. key
+	local cfg = KeySystem._config
+	local nonce = generateNonce()
+	local endpoint = cfg.host .. "/public/whitelist/" .. fToString(cfg.service) .. "?identifier=" .. digest(fGetHwid()) .. "&key=" .. key
+	if cfg.useNonce then
+		endpoint = endpoint .. "&nonce=" .. nonce
+	end
 
-    if useNonce then
-        endpoint = endpoint .. "&nonce=" .. nonce
-    end
+	local res = fRequest({ Url = endpoint, Method = "GET" })
+	requestSending = false
 
-    local response = request({
-        Url = endpoint,
-        Method = "GET"
-    })
+	if res.StatusCode == 200 then
+		local data = decode(res.Body)
+		if data.success and data.data.valid then
+			return true
+		else
+			if fSub(key, 1, 5) == "FREE_" then
+				return KeySystem.redeemKey(key)
+			else
+				onMessage("Invalid key.")
+			end
+		end
+	elseif res.StatusCode == 429 then
+		onMessage("Rate limited.")
+	else
+		onMessage("Unknown error occurred.")
+	end
+	return false
+end
 
-    requestSending = false
+function KeySystem.redeemKey(key)
+	local cfg = KeySystem._config
+	local nonce = generateNonce()
+	local endpoint = cfg.host .. "/public/redeem/" .. fToString(cfg.service)
+	local body = {
+		identifier = digest(fGetHwid()),
+		key = key
+	}
+	if cfg.useNonce then
+		body.nonce = nonce
+	end
 
-    if response.StatusCode == 200 then
-        local decoded = lDecode(response.Body)
-        if decoded.success and decoded.data.valid then
-            return true
-        else
-            return false, decoded.message
-        end
-    else
-        return false, "Server error"
-    end
+	local res = fRequest({
+		Url = endpoint,
+		Method = "POST",
+		Headers = { ["Content-Type"] = "application/json" },
+		Body = encode(body)
+	})
+
+	if res.StatusCode == 200 then
+		local data = decode(res.Body)
+		if data.success and data.data.valid then
+			if not cfg.useNonce or data.data.hash == digest("true-" .. nonce .. "-" .. cfg.secret) then
+				return true
+			end
+			onMessage("Integrity check failed.")
+		else
+			onMessage(data.message)
+		end
+	elseif res.StatusCode == 429 then
+		onMessage("Rate limited.")
+	else
+		onMessage("Unknown error.")
+	end
+	return false
 end
 
 return KeySystem
