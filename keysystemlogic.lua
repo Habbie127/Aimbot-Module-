@@ -88,9 +88,9 @@ local function cacheLink()
             local decoded = lDecode(response.Body)
             if decoded.success then
                 cachedLink = decoded.data.url
-                print("Generated Link Length: " .. #cachedLink)  -- Log the length of the generated link
-                if #cachedLink > 600 then 
-                    return false, "Generated link exceeds maximum length."
+                print("Generated Link Length: " .. #cachedLink) 
+                if #cachedLink > 600 then
+                    return false, "Generated link exceeds maximum length of 600 characters."
                 end
                 cachedTime = os.time()
                 return true, cachedLink
