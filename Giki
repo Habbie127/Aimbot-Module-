@@ -8,8 +8,11 @@ local auraEnabled = false
 local auraRadius = 45
 local damageAmount = 50
 
--- Folder containing runtime-spawned NPCs
-local runtimeFolder = Workspace:FindFirstChild("RuntimeEnemies")
+local npcFolders = {
+	Workspace:FindFirstChild("Zombies"),
+	Workspace:FindFirstChild("NightEnemies"),
+	Workspace:FindFirstChild("Animals")
+}
 
 local function isPlayerModel(model)
 	for _, player in ipairs(Players:GetPlayers()) do
@@ -25,15 +28,19 @@ local function startAura()
 	task.spawn(function()
 		while auraEnabled do
 			local character = LocalPlayer.Character
-			if character and character:FindFirstChild("HumanoidRootPart") and runtimeFolder then
+			if character and character:FindFirstChild("HumanoidRootPart") then
 				local root = character.HumanoidRootPart
 
-				for _, model in ipairs(runtimeFolder:GetChildren()) do
-					if model:IsA("Model") and model:FindFirstChild("Humanoid") and model:FindFirstChild("HumanoidRootPart") and not isPlayerModel(model) then
-						local humanoid = model.Humanoid
-						local dist = (model.HumanoidRootPart.Position - root.Position).Magnitude
-						if dist <= auraRadius and humanoid.Health > 0 then
-							humanoid:TakeDamage(damageAmount)
+				for _, folder in ipairs(npcFolders) do
+					if folder then
+						for _, model in ipairs(folder:GetChildren()) do
+							if model:IsA("Model") and model:FindFirstChild("Humanoid") and model:FindFirstChild("HumanoidRootPart") and not isPlayerModel(model) then
+								local humanoid = model.Humanoid
+								local dist = (model.HumanoidRootPart.Position - root.Position).Magnitude
+								if dist <= auraRadius and humanoid.Health > 0 then
+									humanoid:TakeDamage(damageAmount)
+								end
+							end
 						end
 					end
 				end
