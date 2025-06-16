@@ -6,8 +6,8 @@ local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 
 local auraEnabled = false
-local auraRadius = 40
-local damageAmount = 200
+local auraRadius = 45
+local damageAmount = 95
 
 local function isPlayerModel(model)
 	for _, player in ipairs(Players:GetPlayers()) do
@@ -39,7 +39,6 @@ local function startAura()
 							task.delay(0.1, function()
 								if model and model:FindFirstChild("Humanoid") and model.Humanoid.Health <= 0 then
 									print("NPC " .. model.Name .. " is dead.")
-									model:BreakJoints()
 								end
 							end)
 						end
