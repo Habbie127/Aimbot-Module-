@@ -30,7 +30,7 @@ local function startAura()
                     if model:IsA("Model") and model:FindFirstChild("Humanoid") and model:FindFirstChild("HumanoidRootPart") and not isPlayerModel(model) then
                         local dist = (model.HumanoidRootPart.Position - root.Position).Magnitude
                         if dist <= auraRadius and model.Humanoid.Health > 0 then
-                            model.Humanoid.Health = model.Humanoid.Health - damageAmount
+                            model.Humanoid:TakeDamage(damageAmount)
                         end
                     end
                 end
