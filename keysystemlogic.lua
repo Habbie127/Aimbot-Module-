@@ -1,4 +1,4 @@
-local allowedPlaceId = 3678761576 
+local allowedPlaceId = 3678761576
 if game.PlaceId ~= allowedPlaceId then
     local gui = Instance.new("ScreenGui")
     gui.Name = "KeySystemBlockedGui"
@@ -19,27 +19,23 @@ if game.PlaceId ~= allowedPlaceId then
     local text = Instance.new("TextLabel")
     text.Size = UDim2.new(1, 0, 1, 0)
     text.BackgroundTransparency = 1
-    text.Text = " •  This game is not supported by this script  • "
+    text.Text = " •  This game is not supported by this script or if you in Dead Rails then execute in match • "
     text.TextColor3 = Color3.new(1, 1, 1)
     text.TextScaled = true
     text.Font = Enum.Font.Garamond
     text.Parent = frame
+
     task.delay(8, function()
-        if gui then
-            gui:Destroy()
-        end
+        if gui then gui:Destroy() end
     end)
+
     return {}
 end
 
 local KeySystem = {}
-
 local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
 
-local requestSending = false
-local cachedLink, cachedTime = "", 0
-
--- Use environment functions
 local fSetClipboard = setclipboard or toclipboard
 local fRequest = request or http_request or syn.request
 local fChar = string.char
@@ -48,9 +44,11 @@ local fSub = string.sub
 local fOsTime = os.time
 local fRandom = math.random
 local fFloor = math.floor
-local fGetHwid = gethwid or function() return game:GetService("Players").LocalPlayer.UserId end
+local fGetHwid = gethwid or function() return Players.LocalPlayer.UserId end
 
-local onMessage = function(message)
+local keyFileName = "KeySystem_Save.txt"
+
+local function onMessage(message)
 	pcall(function()
 		game:GetService("StarterGui"):SetCore("ChatMakeSystemMessage", { Text = message; })
 	end)
@@ -100,7 +98,9 @@ function KeySystem.init(service, secret, useNonce)
 	}
 end
 
+local cachedLink, cachedTime = "", 0
 local MAX_LINK_LENGTH = 1000
+local requestSending = false
 
 function KeySystem.copyLink()
 	local timeNow = fOsTime()
@@ -120,9 +120,9 @@ function KeySystem.copyLink()
 			if data.success then
 				cachedLink = data.data.url
 				if #cachedLink > MAX_LINK_LENGTH then
-                    onMessage("Generated link is too long.")
-                    return false
-                end
+					onMessage("Generated link is too long.")
+					return false
+				end
 				cachedTime = timeNow
 			else
 				onMessage(data.message)
@@ -134,6 +134,7 @@ function KeySystem.copyLink()
 	if fSetClipboard then
 		fSetClipboard(cachedLink)
 	end
+	onMessage("📋 Key link copied to clipboard.")
 end
 
 function KeySystem.verifyKey(key)
@@ -145,7 +146,8 @@ function KeySystem.verifyKey(key)
 
 	local cfg = KeySystem._config
 	local nonce = generateNonce()
-	local endpoint = cfg.host .. "/public/whitelist/" .. fToString(cfg.service) .. "?identifier=" .. digest(fGetHwid()) .. "&key=" .. key
+	local endpoint = cfg.host .. "/public/whitelist/" .. fToString(cfg.service) ..
+		"?identifier=" .. digest(fGetHwid()) .. "&key=" .. key
 	if cfg.useNonce then
 		endpoint = endpoint .. "&nonce=" .. nonce
 	end
@@ -156,6 +158,8 @@ function KeySystem.verifyKey(key)
 	if res.StatusCode == 200 then
 		local data = decode(res.Body)
 		if data.success and data.data.valid then
+			if writefile then pcall(writefile, keyFileName, key) end
+			onMessage(" Key verified and saved.")
 			return true
 		else
 			if fSub(key, 1, 5) == "FREE_" then
@@ -180,9 +184,7 @@ function KeySystem.redeemKey(key)
 		identifier = digest(fGetHwid()),
 		key = key
 	}
-	if cfg.useNonce then
-		body.nonce = nonce
-	end
+	if cfg.useNonce then body.nonce = nonce end
 
 	local res = fRequest({
 		Url = endpoint,
@@ -195,6 +197,8 @@ function KeySystem.redeemKey(key)
 		local data = decode(res.Body)
 		if data.success and data.data.valid then
 			if not cfg.useNonce or data.data.hash == digest("true-" .. nonce .. "-" .. cfg.secret) then
+				if writefile then pcall(writefile, keyFileName, key) end
+				onMessage("FREE Key redeemed and saved.")
 				return true
 			end
 			onMessage("Integrity check failed.")
@@ -206,6 +210,19 @@ function KeySystem.redeemKey(key)
 	else
 		onMessage("Unknown error.")
 	end
+	return false
+end
+
+function KeySystem.autoCheck()
+	if isfile and readfile and isfile(keyFileName) then
+		local ok, saved = pcall(readfile, keyFileName)
+		if ok and saved and saved ~= "" then
+			local verified = KeySystem.verifyKey(saved)
+			if verified then return true end
+		end
+	end
+	KeySystem.copyLink()
+	onMessage(" Please enter your key.")
 	return false
 end
 
