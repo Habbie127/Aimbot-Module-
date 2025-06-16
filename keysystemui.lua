@@ -1,12 +1,13 @@
-local KeySystemUI = {}
+-- KeySystemUIModule
+local module = {}
 
-function KeySystemUI:CreateUI(LocalPlayer)
+function module.CreateUI(LocalPlayer, Lighting)
     local gui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
     gui.Name = "KeySystemUI"
     gui.ResetOnSpawn = false
     gui.IgnoreGuiInset = true
 
-    local blur = Instance.new("BlurEffect", game:GetService("Lighting"))
+    local blur = Instance.new("BlurEffect", Lighting)
     blur.Size = 12
 
     local frame = Instance.new("ImageLabel", gui)
@@ -63,13 +64,39 @@ function KeySystemUI:CreateUI(LocalPlayer)
     status.BackgroundTransparency = 1
     status.TextWrapped = true
 
+    local timeGui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+    timeGui.Name = "TimeDisplayUI"
+    timeGui.ResetOnSpawn = false
+    timeGui.Enabled = false
+
+    local timeLabel = Instance.new("TextLabel", timeGui)
+    timeLabel.Size = UDim2.new(0, 100, 0, 30)
+    timeLabel.Position = UDim2.new(1, -5, 0, 5)
+    timeLabel.AnchorPoint = Vector2.new(1, 1)
+    timeLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    timeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    timeLabel.Font = Enum.Font.Garamond
+    timeLabel.TextSize = 16
+    timeLabel.Text = ""
+    timeLabel.TextXAlignment = Enum.TextXAlignment.Center
+    timeLabel.BorderSizePixel = 0
+    timeLabel.BackgroundTransparency = 0.8
+
+    for _, v in pairs({frame, textbox, submit, copy, timeLabel}) do
+        local corner = Instance.new("UICorner", v)
+        corner.CornerRadius = UDim.new(0, 12)
+    end
+
     return {
-        gui = gui,
-        textbox = textbox,
-        submit = submit,
-        copy = copy,
-        status = status
+        GUI = gui,
+        Blur = blur,
+        TextBox = textbox,
+        Submit = submit,
+        Copy = copy,
+        Status = status,
+        TimeGUI = timeGui,
+        TimeLabel = timeLabel
     }
 end
 
-return KeySystemUI
+return module
