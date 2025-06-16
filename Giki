@@ -3,11 +3,13 @@ local AureKillModule = {}
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
-local RunService = game:GetService("RunService")
 
 local auraEnabled = false
 local auraRadius = 45
 local damageAmount = 50
+
+-- Folder containing runtime-spawned NPCs
+local runtimeFolder = Workspace:FindFirstChild("RuntimeEnemies")
 
 local function isPlayerModel(model)
 	for _, player in ipairs(Players:GetPlayers()) do
@@ -23,16 +25,15 @@ local function startAura()
 	task.spawn(function()
 		while auraEnabled do
 			local character = LocalPlayer.Character
-			if character and character:FindFirstChild("HumanoidRootPart") then
+			if character and character:FindFirstChild("HumanoidRootPart") and runtimeFolder then
 				local root = character.HumanoidRootPart
 
-				for _, model in ipairs(Workspace:GetDescendants()) do
+				for _, model in ipairs(runtimeFolder:GetChildren()) do
 					if model:IsA("Model") and model:FindFirstChild("Humanoid") and model:FindFirstChild("HumanoidRootPart") and not isPlayerModel(model) then
+						local humanoid = model.Humanoid
 						local dist = (model.HumanoidRootPart.Position - root.Position).Magnitude
-						if dist <= auraRadius and model.Humanoid.Health > 0 then
-							print("Before Damage: ", model.Humanoid.Health)
-							model.Humanoid:TakeDamage(damageAmount)
-							print("After Damage: ", model.Humanoid.Health)
+						if dist <= auraRadius and humanoid.Health > 0 then
+							humanoid:TakeDamage(damageAmount)
 						end
 					end
 				end
