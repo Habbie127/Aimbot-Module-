@@ -7,59 +7,53 @@ local RunService = game:GetService("RunService")
 
 local auraEnabled = false
 local auraRadius = 45
-local damageAmount = 95
+local damageAmount = 50
 
 local function isPlayerModel(model)
-	for _, player in ipairs(Players:GetPlayers()) do
-		if player.Character == model then
-			return true
-		end
-	end
-	return false
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Character == model then
+            return true
+        end
+    end
+    return false
 end
 
 local function startAura()
-	auraEnabled = true
-	task.spawn(function()
-		while auraEnabled do
-			local character = LocalPlayer.Character
-			if character and character:FindFirstChild("HumanoidRootPart") then
-				local root = character.HumanoidRootPart
+    auraEnabled = true
+    task.spawn(function()
+        while auraEnabled do
+            local character = LocalPlayer.Character
+            if character and character:FindFirstChild("HumanoidRootPart") then
+                local root = character.HumanoidRootPart
 
-				for _, model in ipairs(Workspace:GetDescendants()) do
-					if model:IsA("Model")
-						and model:FindFirstChild("Humanoid")
-						and model:FindFirstChild("HumanoidRootPart")
-						and not isPlayerModel(model) then
-
-						local dist = (model.HumanoidRootPart.Position - root.Position).Magnitude
-						if dist <= auraRadius and model.Humanoid.Health > 0 then
+                for _, model in ipairs(Workspace:GetDescendants()) do
+                    if model:IsA("Model") and model:FindFirstChild("Humanoid") and model:FindFirstChild("HumanoidRootPart") and not isPlayerModel(model) then
+                        local dist = (model.HumanoidRootPart.Position - root.Position).Magnitude
+                        if dist <= auraRadius and model.Humanoid.Health > 0 then
+						    print("Before Damage: ", model.Humanoid.Health)
 							model.Humanoid:TakeDamage(damageAmount)
-
-							task.delay(0.1, function()
-								if model and model:FindFirstChild("Humanoid") and model.Humanoid.Health <= 0 then
-									print("NPC " .. model.Name .. " is dead.")
-								end
-							end)
+							print("After Damage: ", model.Humanoid.Health)
+						        end
+						    end)
 						end
-					end
-				end
-			end
-			task.wait(0.25)
-		end
-	end)
+                    end
+                end
+            end
+            task.wait(0.5)
+        end
+    end)
 end
 
 local function stopAura()
-	auraEnabled = false
+    auraEnabled = false
 end
 
 function AureKillModule.toggleAura(state)
-	if state then
-		startAura()
-	else
-		stopAura()
-	end
+    if state then
+        startAura()
+    else
+        stopAura()
+    end
 end
 
 return AureKillModule
