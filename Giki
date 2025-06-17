@@ -3,16 +3,12 @@ local AureKillModule = {}
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
 
 local auraEnabled = false
 local auraRadius = 45
 local damageAmount = 50
-
-local npcFolders = {
-	Workspace:FindFirstChild("Zombies"),
-	Workspace:FindFirstChild("NightEnemies"),
-	Workspace:FindFirstChild("Animals")
-}
+local npcFolders = {"Enemies", "NightEnemies", "Animals"}
 
 local function isPlayerModel(model)
 	for _, player in ipairs(Players:GetPlayers()) do
@@ -30,24 +26,20 @@ local function startAura()
 			local character = LocalPlayer.Character
 			if character and character:FindFirstChild("HumanoidRootPart") then
 				local root = character.HumanoidRootPart
-
-				for _, folder in ipairs(npcFolders) do
-					if folder then
-						for _, model in ipairs(folder:GetChildren()) do
-							if model:IsA("Model") and model:FindFirstChild("Humanoid") and model:FindFirstChild("HumanoidRootPart") and not isPlayerModel(model) then
-								local humanoid = model.Humanoid
-								local dist = (model.HumanoidRootPart.Position - root.Position).Magnitude
-								if dist <= auraRadius and humanoid.Health > 0 then
-									humanoid:TakeDamage(damageAmount)
-								end
-							end
-						end
-					end
-				end
-			end
-			task.wait(0.5)
-		end
-	end)
+				
+				
+				for _, folderName in ipairs(npcFolders) do
+    local folder = Workspace:FindFirstChild(folderName)
+    if folder then
+        for _, model in ipairs(folder:GetChildren()) do
+            if model:IsA("Model") and model:FindFirstChild("Humanoid") and model:FindFirstChild("HumanoidRootPart") and not isPlayerModel(model) then
+                local dist = (model.HumanoidRootPart.Position - root.Position).Magnitude
+                if dist <= auraRadius and model.Humanoid.Health > 0 then
+                    model.Humanoid:TakeDamage(damageAmount)
+                end
+            end
+        end
+    end
 end
 
 local function stopAura()
