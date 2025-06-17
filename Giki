@@ -8,6 +8,7 @@ local auraEnabled = false
 local auraRadius = 45
 local damageAmount = 50
 
+-- Check if the model is a player's character
 local function isPlayerModel(model)
 	for _, player in ipairs(Players:GetPlayers()) do
 		if player.Character == model then
@@ -17,30 +18,36 @@ local function isPlayerModel(model)
 	return false
 end
 
-local function ensureAnimator(model)
-	local humanoid = model:FindFirstChild("Humanoid")
-	if humanoid then
-		-- Prevent existing animator-destroying scripts
-		for _, child in ipairs(model:GetChildren()) do
-			if child:IsA("Script") or child:IsA("LocalScript") then
-				local src = child.Source or ""
-				if src:find("Animator") and src:find("Destroy") then
-					child.Disabled = true
-					warn("Disabled animator-destroying script in:", model.Name)
-				end
+-- Checks and removes dangerous local Animator scripts
+local function removeAnimatorScript(model)
+	for _, child in ipairs(model:GetChildren()) do
+		if child:IsA("LocalScript") or child:IsA("Script") then
+			local success, src = pcall(function()
+				return child.Source
+			end)
+			if success and src and src:find("Animator") and src:find("Destroy") and src:find("Health") then
+				child:Destroy()
+				warn("🧹 Removed bad Animator script from:", model:GetFullName())
 			end
-		end
-
-		-- Add Animator if missing
-		if not humanoid:FindFirstChildOfClass("Animator") then
-			local animator = Instance.new("Animator")
-			animator.Name = "AuraSafeAnimator"
-			animator.Parent = humanoid
-			print("Added missing Animator to:", model.Name)
 		end
 	end
 end
 
+-- Add an Animator to the NPC if missing
+local function ensureAnimator(model)
+	local humanoid = model:FindFirstChildWhichIsA("Humanoid")
+	if humanoid then
+		removeAnimatorScript(model) -- Make sure no scripts destroy Animator
+		if not humanoid:FindFirstChildOfClass("Animator") then
+			local animator = Instance.new("Animator")
+			animator.Name = "AuraAnimator"
+			animator.Parent = humanoid
+			print("✅ Animator added to:", model.Name)
+		end
+	end
+end
+
+-- Collect all supported NPCs across the defined structure
 local function collectNPCModels()
 	local npcModels = {}
 
@@ -52,7 +59,7 @@ local function collectNPCModels()
 		end
 	end
 
-	-- Animals: workspace > Baseplates > Baseplate > CenterBaseplate > Animals
+	-- Animals under Baseplates > Baseplate > CenterBaseplate > Animals
 	local baseplates = Workspace:FindFirstChild("Baseplates")
 	if baseplates then
 		local baseplate = baseplates:FindFirstChild("Baseplate")
@@ -69,7 +76,7 @@ local function collectNPCModels()
 		end
 	end
 
-	-- RandomBuildings: look for Zombies folder inside any building
+	-- Zombies inside RandomBuildings > [Any Building] > [Descendants] > Zombies Folder
 	local buildings = Workspace:FindFirstChild("RandomBuildings")
 	if buildings then
 		for _, building in ipairs(buildings:GetChildren()) do
@@ -83,7 +90,7 @@ local function collectNPCModels()
 		end
 	end
 
-	-- Towns: look for Zombies folder inside ZombiesPart
+	-- Zombies inside Towns > [Town] > [Descendants] > Zombies Folder
 	local towns = Workspace:FindFirstChild("Towns")
 	if towns then
 		for _, town in ipairs(towns:GetChildren()) do
@@ -100,6 +107,7 @@ local function collectNPCModels()
 	return npcModels
 end
 
+-- Aura kill loop
 local function startAura()
 	auraEnabled = true
 	task.spawn(function()
@@ -113,12 +121,9 @@ local function startAura()
 					if model:IsA("Model") and model:FindFirstChild("Humanoid") and model:FindFirstChild("HumanoidRootPart") and not isPlayerModel(model) then
 						local dist = (model.HumanoidRootPart.Position - root.Position).Magnitude
 						if dist <= auraRadius and model.Humanoid.Health > 0 then
-							-- Ensure Animator before damage
 							ensureAnimator(model)
-
-							-- Damage NPC
 							model.Humanoid:TakeDamage(damageAmount)
-							print("Aura Damage Applied To:", model.Name, "Remaining Health:", model.Humanoid.Health)
+							print("💥 Damaged:", model.Name, "->", model.Humanoid.Health)
 						end
 					end
 				end
@@ -128,10 +133,12 @@ local function startAura()
 	end)
 end
 
+-- Stop aura
 local function stopAura()
 	auraEnabled = false
 end
 
+-- Public toggle
 function AureKillModule.toggleAura(state)
 	if state then
 		startAura()
