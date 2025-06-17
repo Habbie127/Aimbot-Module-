@@ -18,24 +18,12 @@ local function isPlayerModel(model)
 	return false
 end
 
--- Ensure Animator exists on Humanoid before damage
-local function ensureAnimator(humanoid)
-	if humanoid and not humanoid:FindFirstChildOfClass("Animator") then
-		local animator = Instance.new("Animator")
-		animator.Name = "AuraAnimator"
-		animator.Parent = humanoid
-		print("✅ Animator created for humanoid in:", humanoid.Parent.Name)
-	end
-end
-
--- Monitor Animator removal and re-add if necessary; logs reason related to aura kill damage
+-- Monitor Animator removal and log the event
 local function monitorAnimatorRemoval(humanoid)
 	if humanoid then
 		humanoid.ChildRemoved:Connect(function(child)
 			if child:IsA("Animator") then
-				print("⚠️ Animator removed from Humanoid of", humanoid.Parent.Name, "- likely removed by NPC internal script due to damage from aura kill.")
-				-- Re-add Animator to prevent missing animator errors related to aura damage
-				ensureAnimator(humanoid)
+				print("⚠️ Animator removed from Humanoid of", humanoid.Parent.Name, "- removed by NPC internal script due to health change.")
 			end
 		end)
 	end
@@ -101,7 +89,7 @@ local function collectNPCModels()
 	return npcModels
 end
 
--- Aura kill loop - damage NPCs around player within auraRadius, ensuring Animator presence before damage
+-- Aura kill loop - damage NPCs around player within auraRadius
 local function startAura()
 	auraEnabled = true
 	task.spawn(function()
@@ -117,11 +105,16 @@ local function startAura()
 					if model:IsA("Model") and humanoid and rootPart and not isPlayerModel(model) then
 						local dist = (rootPart.Position - root.Position).Magnitude
 						if dist <= auraRadius and humanoid.Health > 0 then
-							-- Ensure Animator is present before taking damage to avoid missing animator error
-							ensureAnimator(humanoid)
-							monitorAnimatorRemoval(humanoid) -- Monitor Animator removal and re-add with log
-							humanoid:TakeDamage(damageAmount)
-							print("💥 Damaged:", model.Name, "->", humanoid.Health)
+							-- Monitor Animator removal
+							monitorAnimatorRemoval(humanoid)
+
+							-- Check if Animator exists before taking damage
+							if not humanoid:FindFirstChildOfClass("Animator") then
+								print("⚠️ Animator is missing for", model.Name, "- cannot apply damage.")
+							else
+								humanoid:TakeDamage(damageAmount)
+								print("💥 Damaged:", model.Name, "->", humanoid.Health)
+							end
 						end
 					end
 				end
