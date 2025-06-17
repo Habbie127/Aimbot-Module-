@@ -28,6 +28,19 @@ local function ensureAnimator(humanoid)
 	end
 end
 
+-- Monitor Animator removal and re-add if necessary; logs reason related to aura kill damage
+local function monitorAnimatorRemoval(humanoid)
+	if humanoid then
+		humanoid.ChildRemoved:Connect(function(child)
+			if child:IsA("Animator") then
+				print("⚠️ Animator removed from Humanoid of", humanoid.Parent.Name, "- likely removed by NPC internal script due to damage from aura kill.")
+				-- Re-add Animator to prevent missing animator errors related to aura damage
+				ensureAnimator(humanoid)
+			end
+		end)
+	end
+end
+
 -- Collect all supported NPC models from known folders in workspace
 local function collectNPCModels()
 	local npcModels = {}
@@ -106,6 +119,7 @@ local function startAura()
 						if dist <= auraRadius and humanoid.Health > 0 then
 							-- Ensure Animator is present before taking damage to avoid missing animator error
 							ensureAnimator(humanoid)
+							monitorAnimatorRemoval(humanoid) -- Monitor Animator removal and re-add with log
 							humanoid:TakeDamage(damageAmount)
 							print("💥 Damaged:", model.Name, "->", humanoid.Health)
 						end
