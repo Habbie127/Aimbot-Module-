@@ -18,33 +18,17 @@ local function isPlayerModel(model)
 	return false
 end
 
--- Remove dangerous 'LocalAnimate' script and prevent Animator destruction
-local function removeLocalAnimate(model)
-	local humanoid = model:FindFirstChildOfClass("Humanoid")
-	if not humanoid then return end
-
-	local localAnimate = model:FindFirstChild("LocalAnimate")
-	if localAnimate and (localAnimate:IsA("LocalScript") or localAnimate:IsA("Script")) then
-		localAnimate:Destroy()
-		warn("🧹 Removed 'LocalAnimate' script from:", model:GetFullName())
+-- Ensure Animator exists on Humanoid before damage
+local function ensureAnimator(humanoid)
+	if humanoid and not humanoid:FindFirstChildOfClass("Animator") then
+		local animator = Instance.new("Animator")
+		animator.Name = "AuraAnimator"
+		animator.Parent = humanoid
+		print("✅ Animator created for humanoid in:", humanoid.Parent.Name)
 	end
 end
 
--- Add Animator if missing, after removing destroy script
-local function ensureAnimator(model)
-	local humanoid = model:FindFirstChildOfClass("Humanoid")
-	if humanoid then
-		removeLocalAnimate(model) -- Clean script first
-		if not humanoid:FindFirstChildOfClass("Animator") then
-			local animator = Instance.new("Animator")
-			animator.Name = "AuraAnimator"
-			animator.Parent = humanoid
-			print("✅ Animator created for:", model.Name)
-		end
-	end
-end
-
--- Collect all supported NPCs across known structure
+-- Collect all supported NPC models from known folders in workspace
 local function collectNPCModels()
 	local npcModels = {}
 
@@ -104,7 +88,7 @@ local function collectNPCModels()
 	return npcModels
 end
 
--- Aura kill loop
+-- Aura kill loop - damage NPCs around player within auraRadius, ensuring Animator presence before damage
 local function startAura()
 	auraEnabled = true
 	task.spawn(function()
@@ -115,12 +99,15 @@ local function startAura()
 				local npcModels = collectNPCModels()
 
 				for _, model in ipairs(npcModels) do
-					if model:IsA("Model") and model:FindFirstChild("Humanoid") and model:FindFirstChild("HumanoidRootPart") and not isPlayerModel(model) then
-						local dist = (model.HumanoidRootPart.Position - root.Position).Magnitude
-						if dist <= auraRadius and model.Humanoid.Health > 0 then
-							ensureAnimator(model)
-							model.Humanoid:TakeDamage(damageAmount)
-							print("💥 Damaged:", model.Name, "->", model.Humanoid.Health)
+					local humanoid = model:FindFirstChildOfClass("Humanoid")
+					local rootPart = model:FindFirstChild("HumanoidRootPart")
+					if model:IsA("Model") and humanoid and rootPart and not isPlayerModel(model) then
+						local dist = (rootPart.Position - root.Position).Magnitude
+						if dist <= auraRadius and humanoid.Health > 0 then
+							-- Ensure Animator is present before taking damage to avoid missing animator error
+							ensureAnimator(humanoid)
+							humanoid:TakeDamage(damageAmount)
+							print("💥 Damaged:", model.Name, "->", humanoid.Health)
 						end
 					end
 				end
