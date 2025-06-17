@@ -18,36 +18,33 @@ local function isPlayerModel(model)
 	return false
 end
 
--- Checks and removes dangerous local Animator scripts
-local function removeAnimatorScript(model)
-	for _, child in ipairs(model:GetChildren()) do
-		if child:IsA("LocalScript") or child:IsA("Script") then
-			local success, src = pcall(function()
-				return child.Source
-			end)
-			if success and src and src:find("Animator") and src:find("Destroy") and src:find("Health") then
-				child:Destroy()
-				warn("🧹 Removed bad Animator script from:", model:GetFullName())
-			end
-		end
+-- Remove dangerous 'LocalAnimate' script and prevent Animator destruction
+local function removeLocalAnimate(model)
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return end
+
+	local localAnimate = model:FindFirstChild("LocalAnimate")
+	if localAnimate and (localAnimate:IsA("LocalScript") or localAnimate:IsA("Script")) then
+		localAnimate:Destroy()
+		warn("🧹 Removed 'LocalAnimate' script from:", model:GetFullName())
 	end
 end
 
--- Add an Animator to the NPC if missing
+-- Add Animator if missing, after removing destroy script
 local function ensureAnimator(model)
-	local humanoid = model:FindFirstChildWhichIsA("Humanoid")
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
 	if humanoid then
-		removeAnimatorScript(model) -- Make sure no scripts destroy Animator
+		removeLocalAnimate(model) -- Clean script first
 		if not humanoid:FindFirstChildOfClass("Animator") then
 			local animator = Instance.new("Animator")
 			animator.Name = "AuraAnimator"
 			animator.Parent = humanoid
-			print("✅ Animator added to:", model.Name)
+			print("✅ Animator created for:", model.Name)
 		end
 	end
 end
 
--- Collect all supported NPCs across the defined structure
+-- Collect all supported NPCs across known structure
 local function collectNPCModels()
 	local npcModels = {}
 
@@ -76,7 +73,7 @@ local function collectNPCModels()
 		end
 	end
 
-	-- Zombies inside RandomBuildings > [Any Building] > [Descendants] > Zombies Folder
+	-- Zombies inside RandomBuildings > any building > Zombies folder
 	local buildings = Workspace:FindFirstChild("RandomBuildings")
 	if buildings then
 		for _, building in ipairs(buildings:GetChildren()) do
@@ -90,7 +87,7 @@ local function collectNPCModels()
 		end
 	end
 
-	-- Zombies inside Towns > [Town] > [Descendants] > Zombies Folder
+	-- Zombies inside Towns > any town > Zombies folder
 	local towns = Workspace:FindFirstChild("Towns")
 	if towns then
 		for _, town in ipairs(towns:GetChildren()) do
@@ -138,7 +135,7 @@ local function stopAura()
 	auraEnabled = false
 end
 
--- Public toggle
+-- Toggle externally
 function AureKillModule.toggleAura(state)
 	if state then
 		startAura()
