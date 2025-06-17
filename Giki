@@ -8,7 +8,6 @@ local RunService = game:GetService("RunService")
 local auraEnabled = false
 local auraRadius = 45
 local damageAmount = 50
-local npcFolders = {"Enemies", "NightEnemies", "Animals"}
 
 local function isPlayerModel(model)
 	for _, player in ipairs(Players:GetPlayers()) do
@@ -19,6 +18,66 @@ local function isPlayerModel(model)
 	return false
 end
 
+-- Utility function to collect NPC models from nested folders
+local function collectNPCModels()
+	local npcModels = {}
+
+	-- NightEnemies
+	local nightFolder = Workspace:FindFirstChild("NightEnemies")
+	if nightFolder then
+		for _, model in ipairs(nightFolder:GetChildren()) do
+			table.insert(npcModels, model)
+		end
+	end
+
+	-- Animals: workspace > Baseplates > Baseplate > CenterBaseplate > Animals
+	local baseplates = Workspace:FindFirstChild("Baseplates")
+	if baseplates then
+		local baseplate = baseplates:FindFirstChild("Baseplate")
+		if baseplate then
+			local center = baseplate:FindFirstChild("CenterBaseplate")
+			if center then
+				local animals = center:FindFirstChild("Animals")
+				if animals then
+					for _, model in ipairs(animals:GetChildren()) do
+						table.insert(npcModels, model)
+					end
+				end
+			end
+		end
+	end
+
+	-- RandomBuildings: look for Zombies folder inside parts like StandaloneZombiePart
+	local buildings = Workspace:FindFirstChild("RandomBuildings")
+	if buildings then
+		for _, building in ipairs(buildings:GetChildren()) do
+			for _, descendant in ipairs(building:GetDescendants()) do
+				if descendant:IsA("Folder") and descendant.Name == "Zombies" then
+					for _, model in ipairs(descendant:GetChildren()) do
+						table.insert(npcModels, model)
+					end
+				end
+			end
+		end
+	end
+
+	-- Towns: look for ZombiesPart > Zombies folder
+	local towns = Workspace:FindFirstChild("Towns")
+	if towns then
+		for _, town in ipairs(towns:GetChildren()) do
+			for _, descendant in ipairs(town:GetDescendants()) do
+				if descendant:IsA("Folder") and descendant.Name == "Zombies" then
+					for _, model in ipairs(descendant:GetChildren()) do
+						table.insert(npcModels, model)
+					end
+				end
+			end
+		end
+	end
+
+	return npcModels
+end
+
 local function startAura()
 	auraEnabled = true
 	task.spawn(function()
@@ -26,20 +85,22 @@ local function startAura()
 			local character = LocalPlayer.Character
 			if character and character:FindFirstChild("HumanoidRootPart") then
 				local root = character.HumanoidRootPart
-				
-				
-				for _, folderName in ipairs(npcFolders) do
-    local folder = Workspace:FindFirstChild(folderName)
-    if folder then
-        for _, model in ipairs(folder:GetChildren()) do
-            if model:IsA("Model") and model:FindFirstChild("Humanoid") and model:FindFirstChild("HumanoidRootPart") and not isPlayerModel(model) then
-                local dist = (model.HumanoidRootPart.Position - root.Position).Magnitude
-                if dist <= auraRadius and model.Humanoid.Health > 0 then
-                    model.Humanoid:TakeDamage(damageAmount)
-                end
-            end
-        end
-    end
+				local npcModels = collectNPCModels()
+
+				for _, model in ipairs(npcModels) do
+					if model:IsA("Model") and model:FindFirstChild("Humanoid") and model:FindFirstChild("HumanoidRootPart") and not isPlayerModel(model) then
+						local dist = (model.HumanoidRootPart.Position - root.Position).Magnitude
+						if dist <= auraRadius and model.Humanoid.Health > 0 then
+							print("Before Damage:", model.Name, model.Humanoid.Health)
+							model.Humanoid:TakeDamage(damageAmount)
+							print("After Damage:", model.Name, model.Humanoid.Health)
+						end
+					end
+				end
+			end
+			task.wait(0.5)
+		end
+	end)
 end
 
 local function stopAura()
