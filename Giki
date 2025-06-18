@@ -5,8 +5,8 @@ local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 
 local auraEnabled = false
-local auraRadius = 45
-local damageAmount = 50
+local auraRadius = 80
+local damageAmount = 10
 
 -- Check if the model is a player's character
 local function isPlayerModel(model)
@@ -18,12 +18,12 @@ local function isPlayerModel(model)
 	return false
 end
 
--- Monitor Animator removal and log the event
+-- Monitor Animator removal (optional logging)
 local function monitorAnimatorRemoval(humanoid)
 	if humanoid then
 		humanoid.ChildRemoved:Connect(function(child)
 			if child:IsA("Animator") then
-				print("⚠️ Animator removed from Humanoid of", humanoid.Parent.Name, "- removed by NPC internal script due to health change.")
+				
 			end
 		end)
 	end
@@ -110,16 +110,16 @@ local function startAura()
 
 							-- Check if Animator exists before taking damage
 							if not humanoid:FindFirstChildOfClass("Animator") then
-								print("⚠️ Animator is missing for", model.Name, "- cannot apply damage.")
+
 							else
 								humanoid:TakeDamage(damageAmount)
-								print("💥 Damaged:", model.Name, "->", humanoid.Health)
+
 							end
 						end
 					end
 				end
 			end
-			task.wait(0.5)
+			task.wait(1)
 		end
 	end)
 end
