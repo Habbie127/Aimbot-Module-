@@ -263,11 +263,16 @@ local function getOptimalAimPoint(target)
 
 	local targetPart = hrp
 	local aimOffset = Vector3.zero
-	
+
 	if aimTargetMode == "Head" and head then
 		targetPart = head
 	elseif aimTargetMode == "Body" then
 		targetPart = hrp
+		if distance >= 150 then
+			aimOffset = Vector3.new(0, 1.5, 0)
+		else
+			aimOffset = Vector3.new(0, 0.5, 0)
+		end
 	elseif aimTargetMode == "Auto" then
 		if head and distance < 150 then
 			targetPart = head
