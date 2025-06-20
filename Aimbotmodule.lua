@@ -11,6 +11,7 @@ local AimbotRange = 600
 local AimbotSmoothness = 0.3
 local useLerp = false
 local visibilityCheckEnabled = false
+local aimTargetMode = "Auto"
 
 local aimlockEnabled = false
 local nearestAimbotEnabled = false
@@ -262,17 +263,22 @@ local function getOptimalAimPoint(target)
 
 	local targetPart = hrp
 	local aimOffset = Vector3.zero
-
-	if head and distance < 150 then
+	
+	if aimTargetMode == "Head" and head then
 		targetPart = head
-	elseif distance < 350 then
-		aimOffset = Vector3.new(0, 1.0, 0)
-	else
-		aimOffset = Vector3.new(0, 0.5, 0)
+	elseif aimTargetMode == "Body" then
+		targetPart = hrp
+	elseif aimTargetMode == "Auto" then
+		if head and distance < 150 then
+			targetPart = head
+		elseif distance < 350 then
+			aimOffset = Vector3.new(0, 1.0, 0)
+		else
+			aimOffset = Vector3.new(0, 0.5, 0)
+		end
 	end
 
 	local predicted = getPredictedPosition(targetPart, velocity, distance, bulletSpeed)
-
 	return predicted + aimOffset
 end
 
@@ -293,6 +299,12 @@ end
 
 function AimbotModule.setVisibilityCheck(state)
 	visibilityCheckEnabled = state
+end
+
+function AimbotModule.setAimTargetMode(mode)
+	if mode == "Head" or mode == "Body" or mode == "Auto" then
+		aimTargetMode = mode
+	end
 end
 
 function AimbotModule.setSmoothness(value)
