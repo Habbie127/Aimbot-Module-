@@ -59,59 +59,31 @@ local function isVisible(targetPart)
     
     local origin = Camera.CFrame.Position
     local targetPos = targetPart.Position
-    local targetSize = targetPart.Size
-    
-    local testPoints = {
-        targetPos,
-        targetPos + Vector3.new(0, targetSize.Y/2, 0),  -- Upper torso
-        targetPos - Vector3.new(0, targetSize.Y/3, 0),  -- Lower torso
-        
-        targetPos + Vector3.new(targetSize.X/2, 0, 0),
-        targetPos - Vector3.new(targetSize.X/2, 0, 0),
-        targetPos + Vector3.new(0, 0, targetSize.Z/2),
-        targetPos - Vector3.new(0, 0, targetSize.Z/2),
-        
-        targetPos + Vector3.new(targetSize.X/2, targetSize.Y/2, targetSize.Z/2),
-        targetPos - Vector3.new(targetSize.X/2, targetSize.Y/2, targetSize.Z/2)
-    }
     
     local rayParams = RaycastParams.new()
     rayParams.FilterType = Enum.RaycastFilterType.Blacklist
     rayParams.FilterDescendantsInstances = {LocalPlayer.Character, targetPart.Parent}
     rayParams.IgnoreWater = true
     
-    local visiblePoints = 0
-    for _, point in ipairs(testPoints) do
-        local direction = (point - origin)
-        local distance = direction.Magnitude
-        direction = direction.Unit
-        
-        local result = workspace:Raycast(origin, direction * distance, rayParams)
-        
-        local isVisiblePoint = true
-        if result then
-            local hitPart = result.Instance
-            if hitPart:IsA("Terrain") 
-               or (hitPart.Transparency < 0.7 and hitPart.CanCollide and not hitPart:IsA("BasePart" and hitPart.Name:match("Bush"))) then
-                isVisiblePoint = false
-            end
-        end
-        
-        if isVisiblePoint then
-            visiblePoints = visiblePoints + 1
-        end
+    local direction = (targetPos - origin).Unit
+    local distance = (targetPos - origin).Magnitude
+    local result = workspace:Raycast(origin, direction * distance, rayParams)
+    
+    if not result then
+        return true
     end
     
-    local visibilityScore = visiblePoints / #testPoints
+    local hitPart = result.Instance
     
-    local HEAD_VISIBILITY_THRESHOLD = 0.65  -- More strict for headshots
-    local BODY_VISIBILITY_THRESHOLD = 0.45  -- More lenient for body shots
-    
-    if aimTargetMode == "Head" then
-        return visibilityScore >= HEAD_VISIBILITY_THRESHOLD
-    else
-        return visibilityScore >= BODY_VISIBILITY_THRESHOLD
+    if hitPart:IsA("Terrain") or (hitPart.CanCollide and hitPart.Transparency < 0.7) then
+        return false  -- Blocked by terrain or solid object
     end
+    
+    if isBush(hitPart) then
+        return true 
+    end
+    
+    return false 
 end
 
 local function isValidTarget(player)
