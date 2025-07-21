@@ -15,7 +15,8 @@ local aimTargetMode = "Auto"
 
 local aimlockEnabled = false
 local nearestAimbotEnabled = false
-local lockedTarget = nil
+local aimlockConnection = nil
+local nearestConnection = nil
 
 local FOVGui = Instance.new("ScreenGui")
 FOVGui.Name = "FOVCircleGui"
@@ -41,37 +42,34 @@ FOVOutline.Thickness = 1
 FOVOutline.Color = Color3.fromRGB(0, 255, 0)
 FOVOutline.Transparency = 0
 
-local function isVisible(targetCharacter)
-	if not targetCharacter then return false end
+local function isVisible(targetPart)
+    if not targetPart or not targetPart:IsA("BasePart") then
+        return false
+    end
 
-	local partsToCheck = {
-		targetCharacter:FindFirstChild("Head"),
-		targetCharacter:FindFirstChild("UpperTorso") or targetCharacter:FindFirstChild("Torso"),
-		targetCharacter:FindFirstChild("HumanoidRootPart")
-	}
+    local origin = Camera.CFrame.Position
+    local targetPos = targetPart.Position
 
-	local origin = Camera.CFrame.Position
-	local rayParams = RaycastParams.new()
-	rayParams.FilterType = Enum.RaycastFilterType.Blacklist
-	rayParams.FilterDescendantsInstances = {LocalPlayer.Character}
-	rayParams.IgnoreWater = true
+    local rayParams = RaycastParams.new()
+    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+    rayParams.FilterDescendantsInstances = {LocalPlayer.Character, targetPart.Parent}
+    rayParams.IgnoreWater = true
 
-	for _, part in ipairs(partsToCheck) do
-		if part and part:IsA("BasePart") then
-			local direction = (part.Position - origin)
-			local result = Workspace:Raycast(origin, direction, rayParams)
+    local direction = (targetPos - origin).Unit
+    local distance = (targetPos - origin).Magnitude
+    local result = workspace:Raycast(origin, direction * distance, rayParams)
 
-			if result then
-				if result.Instance:IsDescendantOf(targetCharacter) then
-					return true -- Partially visible
-				end
-			else
-				return true -- No obstruction
-			end
-		end
-	end
+    if not result then
+        return true -- nothing blocking
+    end
 
-	return false -- Fully covered
+    local hitPart = result.Instance
+
+    if hitPart:IsA("Terrain") or (hitPart.CanCollide and hitPart.Transparency < 0.7) then
+        return false -- blocked by terrain or solid part
+    end
+
+    return true -- otherwise visible
 end
 
 local function isValidTarget(player)
@@ -84,47 +82,19 @@ local function isValidTarget(player)
 end
 
 local function getClosestEnemyByDistance()
-	local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-	if not character then return nil end
-
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return nil end
-
-	local closest = nil
-	local shortestDist = math.huge
-
-	for _, player in pairs(Players:GetPlayers()) do
+	local closest, shortest = nil, AimbotRange
+	for _, player in ipairs(Players:GetPlayers()) do
 		if isValidTarget(player) then
-			local targetChar = player.Character
-			local head = targetChar:FindFirstChild("Head")
-			local root = targetChar:FindFirstChild("HumanoidRootPart")
-
-			local targetPart = nil
-
-			if aimTargetMode == "Head" and head then
-				targetPart = head
-			elseif aimTargetMode == "Body" and root then
-				targetPart = root
-			elseif aimTargetMode == "Auto" then
-				if head and (hrp.Position - head.Position).Magnitude < 150 then
-					targetPart = head
-				elseif root then
-					targetPart = root
-				end
-			end
-
-			local humanoid = targetChar:FindFirstChildOfClass("Humanoid")
-
-			if targetPart and humanoid and humanoid.Health > 0 then
-				local dist = (targetPart.Position - hrp.Position).Magnitude
-				if dist <= AimbotRange and (not visibilityCheckEnabled or isVisible(targetChar)) and dist < shortestDist then
+			local hrp = player.Character.HumanoidRootPart
+			if not visibilityCheckEnabled or isVisible(hrp) then
+				local dist = (Camera.CFrame.Position - hrp.Position).Magnitude
+				if dist < shortest then
+					shortest = dist
 					closest = player
-					shortestDist = dist
 				end
 			end
 		end
 	end
-
 	return closest
 end
 
@@ -133,7 +103,7 @@ local function getClosestEnemyFOV()
 	for _, player in ipairs(Players:GetPlayers()) do
 		if isValidTarget(player) then
 			local hrp = player.Character.HumanoidRootPart
-			if not visibilityCheckEnabled or isVisible(player.Character) then
+			if not visibilityCheckEnabled or isVisible(hrp) then
 				local screenPos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
 				if onScreen then
 					local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)).Magnitude
@@ -227,9 +197,9 @@ local function getEnhancedVelocity(player)
 	return data.smoothedVel
 end
 
-local function getPredictedPosition(targetCharacter, targetVelocity, distance, bulletSpeed)
+local function getPredictedPosition(targetPart, targetVelocity, distance, bulletSpeed)
 	local origin = Camera.CFrame.Position
-	local toTarget = targetCharacter.Position - origin
+	local toTarget = targetPart.Position - origin
 
 	local a = targetVelocity:Dot(targetVelocity) - bulletSpeed^2
 	local b = 2 * toTarget:Dot(targetVelocity)
@@ -240,7 +210,7 @@ local function getPredictedPosition(targetCharacter, targetVelocity, distance, b
 	if discriminant < 0 or math.abs(a) < 1e-6 then
 		local time = toTarget.Magnitude / bulletSpeed
 		local latencyCompensation = math.clamp(time * 0.4, 0.05, 0.3)
-		return targetCharacter.Position + targetVelocity * (time + latencyCompensation)
+		return targetPart.Position + targetVelocity * (time + latencyCompensation)
 	end
 
 	local sqrtDisc = math.sqrt(discriminant)
@@ -259,11 +229,11 @@ local function getPredictedPosition(targetCharacter, targetVelocity, distance, b
 	end
 
 	if not hitTime then
-		return targetCharacter.Position
+		return targetPart.Position
 	end
 
 	local leadFactor = 1.1
-	local predicted = targetCharacter.Position + targetVelocity * hitTime * leadFactor
+	local predicted = targetPart.Position + targetVelocity * hitTime * leadFactor
 
 	local latencyCompensation = math.clamp(hitTime * 0.4, 0.05, 0.3)
 	predicted = predicted + targetVelocity * latencyCompensation
@@ -281,16 +251,17 @@ local function getOptimalAimPoint(target)
 	local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
 	local bulletSpeed = getCurrentBulletSpeed()
 
-	local targetCharacter = hrp
+	local targetPart = hrp
 	local aimOffset = Vector3.zero
 
+	-- Apply target selection based on dropdown setting
 	if aimTargetMode == "Head" and head then
-		targetCharacter = head
+		targetPart = head
 	elseif aimTargetMode == "Body" then
-		targetCharacter = hrp
+		targetPart = hrp
 	elseif aimTargetMode == "Auto" then
 		if head and distance < 150 then
-			targetCharacter = head
+			targetPart = head
 		elseif distance < 350 then
 			aimOffset = Vector3.new(0, 1.0, 0)
 		else
@@ -298,7 +269,7 @@ local function getOptimalAimPoint(target)
 		end
 	end
 
-	local predicted = getPredictedPosition(targetCharacter, velocity, distance, bulletSpeed)
+	local predicted = getPredictedPosition(targetPart, velocity, distance, bulletSpeed)
 	return predicted + aimOffset
 end
 
@@ -312,38 +283,6 @@ local function smoothLook(targetPos)
 		Camera.CFrame = CFrame.new(camPos, targetPos)
 	end
 end
-
-RunService.Heartbeat:Connect(function()
-	local character = LocalPlayer.Character
-	if not character then return end
-
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
-
-	if lockedTarget then
-		local targetChar = lockedTarget.Character
-		local targetHRP = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
-		local humanoid = targetChar and targetChar:FindFirstChildOfClass("Humanoid")
-
-		if not humanoid or humanoid.Health <= 0 or not targetHRP then
-			lockedTarget = nil
-		else
-			local dist = (targetHRP.Position - hrp.Position).Magnitude
-			if dist > AimbotRange or (visibilityCheckEnabled and not isVisible(targetChar)) then
-				lockedTarget = nil
-			end
-		end
-	end
-
-	if not lockedTarget then
-		lockedTarget = getClosestEnemyByDistance()
-	end
-
-	if lockedTarget and (aimlockEnabled or nearestAimbotEnabled) then
-		local aim = getOptimalAimPoint(lockedTarget)
-		if aim then smoothLook(aim) end
-	end
-end)
 
 function AimbotModule.setSmooth(state)
 	useLerp = state
@@ -374,10 +313,34 @@ end
 
 function AimbotModule.toggleAimlock(state)
 	aimlockEnabled = state
+	if state then
+		if aimlockConnection then aimlockConnection:Disconnect() end
+		aimlockConnection = RunService.RenderStepped:Connect(function()
+			local target = getClosestEnemyFOV()
+			if target then
+				local aim = getOptimalAimPoint(target)
+				if aim then smoothLook(aim) end
+			end
+		end)
+	else
+		if aimlockConnection then aimlockConnection:Disconnect() end
+	end
 end
 
 function AimbotModule.toggleNearest(state)
 	nearestAimbotEnabled = state
+	if state then
+		if nearestConnection then nearestConnection:Disconnect() end
+		nearestConnection = RunService.RenderStepped:Connect(function()
+			local target = getClosestEnemyByDistance()
+			if target then
+				local aim = getOptimalAimPoint(target)
+				if aim then smoothLook(aim) end
+			end
+		end)
+	else
+		if nearestConnection then nearestConnection:Disconnect() end
+	end
 end
 
 function AimbotModule.toggleFOVCircle(state)
