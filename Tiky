@@ -50,17 +50,16 @@ local function isVisible(targetCharacter)
 		targetCharacter:FindFirstChild("UpperTorso") or targetCharacter:FindFirstChild("Torso")
 	}
 
-	for _, part in ipairs(partsToCheck) do
+	local origin = Camera.CFrame.Position
+	local rayParams = RaycastParams.new()
+	rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+	rayParams.FilterDescendantsInstances = {LocalPlayer.Character, targetCharacter}
+	rayParams.IgnoreWater = true
+
+	for _, part in pairs(partsToCheck) do
 		if part and part:IsA("BasePart") then
-			local origin = Camera.CFrame.Position
-			local direction = (part.Position - origin)
-			local rayParams = RaycastParams.new()
-			rayParams.FilterType = Enum.RaycastFilterType.Blacklist
-			rayParams.FilterDescendantsInstances = {LocalPlayer.Character, targetCharacter}
-			rayParams.IgnoreWater = true
-
+			local direction = part.Position - origin
 			local result = Workspace:Raycast(origin, direction.Unit * direction.Magnitude, rayParams)
-
 			if result and result.Instance and result.Instance:IsDescendantOf(targetCharacter) then
 				return true
 			end
