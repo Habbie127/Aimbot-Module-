@@ -61,17 +61,12 @@ local function isVisible(targetCharacter)
 			local direction = (part.Position - origin)
 			local result = Workspace:Raycast(origin, direction, rayParams)
 
-			print("🔍 Checking visibility for:", part:GetFullName())
 			if result then
-				print("➡️ Ray hit:", result.Instance:GetFullName())
 				if result.Instance:IsDescendantOf(targetCharacter) then
-					print("✅ Visible part hit:", part.Name)
 					return true
 				else
-					print("❌ Hit something else:", result.Instance:GetFullName())
 				end
 			else
-				print("✅ No obstruction to", part.Name)
 				return true
 			end
 		end
