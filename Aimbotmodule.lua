@@ -42,48 +42,34 @@ FOVOutline.Thickness = 1
 FOVOutline.Color = Color3.fromRGB(0, 255, 0)
 FOVOutline.Transparency = 0
 
-local function isBush(part)
-	if not part or not part:IsA("BasePart") then return false end
-	local bushNames = {
-		["Bush"] = true,
-		["BushLeave"] = true,
-		["Bushes"] = true
-	}
-	return bushNames[part.Name] == true or (part.Parent and bushNames[part.Parent.Name] == true)
-end
-
 local function isVisible(targetPart)
     if not targetPart or not targetPart:IsA("BasePart") then
         return false
     end
-    
+
     local origin = Camera.CFrame.Position
     local targetPos = targetPart.Position
-    
+
     local rayParams = RaycastParams.new()
     rayParams.FilterType = Enum.RaycastFilterType.Blacklist
     rayParams.FilterDescendantsInstances = {LocalPlayer.Character, targetPart.Parent}
     rayParams.IgnoreWater = true
-    
+
     local direction = (targetPos - origin).Unit
     local distance = (targetPos - origin).Magnitude
     local result = workspace:Raycast(origin, direction * distance, rayParams)
-    
+
     if not result then
-        return true
+        return true -- nothing blocking
     end
-    
+
     local hitPart = result.Instance
-    
+
     if hitPart:IsA("Terrain") or (hitPart.CanCollide and hitPart.Transparency < 0.7) then
-        return false  -- Blocked by terrain or solid object
+        return false 
     end
-    
-    if isBush(hitPart) then
-        return true 
-    end
-    
-    return false 
+
+    return true
 end
 
 local function isValidTarget(player)
