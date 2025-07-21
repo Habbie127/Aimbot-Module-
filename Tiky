@@ -15,8 +15,6 @@ local aimTargetMode = "Auto"
 
 local aimlockEnabled = false
 local nearestAimbotEnabled = false
-local aimlockConnection = nil
-local nearestConnection = nil
 
 local FOVGui = Instance.new("ScreenGui")
 FOVGui.Name = "FOVCircleGui"
@@ -85,19 +83,47 @@ local function isValidTarget(player)
 end
 
 local function getClosestEnemyByDistance()
-	local closest, shortest = nil, AimbotRange
-	for _, player in ipairs(Players:GetPlayers()) do
+	local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+	if not character then return nil end
+
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return nil end
+
+	local closest = nil
+	local shortestDist = math.huge
+
+	for _, player in pairs(Players:GetPlayers()) do
 		if isValidTarget(player) then
-			local hrp = player.Character.HumanoidRootPart
-			if not visibilityCheckEnabled or isVisible(hrp) then
-				local dist = (Camera.CFrame.Position - hrp.Position).Magnitude
-				if dist < shortest then
-					shortest = dist
+			local targetChar = player.Character
+			local head = targetChar:FindFirstChild("Head")
+			local root = targetChar:FindFirstChild("HumanoidRootPart")
+
+			local targetPart = nil
+
+			if aimTargetMode == "Head" and head then
+				targetPart = head
+			elseif aimTargetMode == "Body" and root then
+				targetPart = root
+			elseif aimTargetMode == "Auto" then
+				if head and (hrp.Position - head.Position).Magnitude < 150 then
+					targetPart = head
+				elseif root then
+					targetPart = root
+				end
+			end
+
+			local humanoid = targetChar:FindFirstChildOfClass("Humanoid")
+
+			if targetPart and humanoid and humanoid.Health > 0 then
+				local dist = (targetPart.Position - hrp.Position).Magnitude
+				if dist <= AimbotRange and (not visibilityCheckEnabled or isVisible(targetChar)) and dist < shortestDist then
 					closest = player
+					shortestDist = dist
 				end
 			end
 		end
 	end
+
 	return closest
 end
 
@@ -287,6 +313,38 @@ local function smoothLook(targetPos)
 	end
 end
 
+RunService.Heartbeat:Connect(function()
+	local character = LocalPlayer.Character
+	if not character then return end
+
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	if lockedTarget then
+		local targetChar = lockedTarget.Character
+		local targetHRP = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
+		local humanoid = targetChar and targetChar:FindFirstChildOfClass("Humanoid")
+
+		if not humanoid or humanoid.Health <= 0 or not targetHRP then
+			lockedTarget = nil
+		else
+			local dist = (targetHRP.Position - hrp.Position).Magnitude
+			if dist > AimbotRange or (visibilityCheckEnabled and not isVisible(targetChar)) then
+				lockedTarget = nil
+			end
+		end
+	end
+
+	if not lockedTarget then
+		lockedTarget = getClosestEnemyByDistance()
+	end
+
+	if lockedTarget and (aimlockEnabled or nearestAimbotEnabled) then
+		local aim = getOptimalAimPoint(lockedTarget)
+		if aim then smoothLook(aim) end
+	end
+end)
+
 function AimbotModule.setSmooth(state)
 	useLerp = state
 end
@@ -316,34 +374,10 @@ end
 
 function AimbotModule.toggleAimlock(state)
 	aimlockEnabled = state
-	if state then
-		if aimlockConnection then aimlockConnection:Disconnect() end
-		aimlockConnection = RunService.RenderStepped:Connect(function()
-			local target = getClosestEnemyFOV()
-			if target then
-				local aim = getOptimalAimPoint(target)
-				if aim then smoothLook(aim) end
-			end
-		end)
-	else
-		if aimlockConnection then aimlockConnection:Disconnect() end
-	end
 end
 
 function AimbotModule.toggleNearest(state)
 	nearestAimbotEnabled = state
-	if state then
-		if nearestConnection then nearestConnection:Disconnect() end
-		nearestConnection = RunService.RenderStepped:Connect(function()
-			local target = getClosestEnemyByDistance()
-			if target then
-				local aim = getOptimalAimPoint(target)
-				if aim then smoothLook(aim) end
-			end
-		end)
-	else
-		if nearestConnection then nearestConnection:Disconnect() end
-	end
 end
 
 function AimbotModule.toggleFOVCircle(state)
