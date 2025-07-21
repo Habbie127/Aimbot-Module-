@@ -200,9 +200,9 @@ local function getEnhancedVelocity(player)
 	return data.smoothedVel
 end
 
-local function getPredictedPosition(targetPart, targetVelocity, distance, bulletSpeed)
+local function getPredictedPosition(targetCharacter, targetVelocity, distance, bulletSpeed)
 	local origin = Camera.CFrame.Position
-	local toTarget = targetPart.Position - origin
+	local toTarget = targetCharacter.Position - origin
 
 	local a = targetVelocity:Dot(targetVelocity) - bulletSpeed^2
 	local b = 2 * toTarget:Dot(targetVelocity)
@@ -213,7 +213,7 @@ local function getPredictedPosition(targetPart, targetVelocity, distance, bullet
 	if discriminant < 0 or math.abs(a) < 1e-6 then
 		local time = toTarget.Magnitude / bulletSpeed
 		local latencyCompensation = math.clamp(time * 0.4, 0.05, 0.3)
-		return targetPart.Position + targetVelocity * (time + latencyCompensation)
+		return targetCharacter.Position + targetVelocity * (time + latencyCompensation)
 	end
 
 	local sqrtDisc = math.sqrt(discriminant)
@@ -232,11 +232,11 @@ local function getPredictedPosition(targetPart, targetVelocity, distance, bullet
 	end
 
 	if not hitTime then
-		return targetPart.Position
+		return targetCharacter.Position
 	end
 
 	local leadFactor = 1.1
-	local predicted = targetPart.Position + targetVelocity * hitTime * leadFactor
+	local predicted = targetCharacter.Position + targetVelocity * hitTime * leadFactor
 
 	local latencyCompensation = math.clamp(hitTime * 0.4, 0.05, 0.3)
 	predicted = predicted + targetVelocity * latencyCompensation
@@ -254,17 +254,17 @@ local function getOptimalAimPoint(target)
 	local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
 	local bulletSpeed = getCurrentBulletSpeed()
 
-	local targetPart = hrp
+	local targetCharacter = hrp
 	local aimOffset = Vector3.zero
 
 	-- Apply target selection based on dropdown setting
 	if aimTargetMode == "Head" and head then
-		targetPart = head
+		targetCharacter = head
 	elseif aimTargetMode == "Body" then
-		targetPart = hrp
+		targetCharacter = hrp
 	elseif aimTargetMode == "Auto" then
 		if head and distance < 150 then
-			targetPart = head
+			targetCharacter = head
 		elseif distance < 350 then
 			aimOffset = Vector3.new(0, 1.0, 0)
 		else
@@ -272,7 +272,7 @@ local function getOptimalAimPoint(target)
 		end
 	end
 
-	local predicted = getPredictedPosition(targetPart, velocity, distance, bulletSpeed)
+	local predicted = getPredictedPosition(targetCharacter, velocity, distance, bulletSpeed)
 	return predicted + aimOffset
 end
 
