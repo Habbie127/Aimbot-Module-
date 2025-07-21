@@ -15,6 +15,7 @@ local aimTargetMode = "Auto"
 
 local aimlockEnabled = false
 local nearestAimbotEnabled = false
+local lockedTarget = nil
 
 local FOVGui = Instance.new("ScreenGui")
 FOVGui.Name = "FOVCircleGui"
@@ -62,15 +63,15 @@ local function isVisible(targetCharacter)
 
 			if result then
 				if result.Instance:IsDescendantOf(targetCharacter) then
-					return true
+					return true -- Partially visible
 				end
 			else
-				return true
+				return true -- No obstruction
 			end
 		end
 	end
 
-	return false
+	return false -- Fully covered
 end
 
 local function isValidTarget(player)
@@ -132,7 +133,7 @@ local function getClosestEnemyFOV()
 	for _, player in ipairs(Players:GetPlayers()) do
 		if isValidTarget(player) then
 			local hrp = player.Character.HumanoidRootPart
-			if not visibilityCheckEnabled or isVisible(hrp) then
+			if not visibilityCheckEnabled or isVisible(player.Character) then
 				local screenPos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
 				if onScreen then
 					local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)).Magnitude
@@ -283,7 +284,6 @@ local function getOptimalAimPoint(target)
 	local targetCharacter = hrp
 	local aimOffset = Vector3.zero
 
-	-- Apply target selection based on dropdown setting
 	if aimTargetMode == "Head" and head then
 		targetCharacter = head
 	elseif aimTargetMode == "Body" then
