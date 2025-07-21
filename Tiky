@@ -46,8 +46,8 @@ local function isVisible(targetCharacter)
 
 	local partsToCheck = {
 		targetCharacter:FindFirstChild("Head"),
-		targetCharacter:FindFirstChild("HumanoidRootPart"),
-		targetCharacter:FindFirstChild("UpperTorso") or targetCharacter:FindFirstChild("Torso")
+		targetCharacter:FindFirstChild("UpperTorso") or targetCharacter:FindFirstChild("Torso"),
+		targetCharacter:FindFirstChild("HumanoidRootPart")
 	}
 
 	local origin = Camera.CFrame.Position
@@ -63,17 +63,15 @@ local function isVisible(targetCharacter)
 
 			if result then
 				if result.Instance:IsDescendantOf(targetCharacter) then
-					return true
-				else
+					return true -- Partially visible
 				end
 			else
-				return true
+				return true -- No obstruction
 			end
 		end
 	end
 
-	print("❌ No visible parts found for:", targetCharacter.Name)
-	return false
+	return false -- Fully covered
 end
 
 local function isValidTarget(player)
