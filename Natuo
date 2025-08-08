@@ -1,0 +1,175 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+
+local AimESPModule = {}
+
+-- CONFIG
+local MAX_AIM_DISTANCE = 600
+
+-- STATE
+local aimEnabled = false
+local ESPParts = {
+    "Head","UpperTorso","LowerTorso",
+    "LeftUpperArm","RightUpperArm","LeftLowerArm","RightLowerArm","LeftHand","RightHand",
+    "LeftUpperLeg","RightUpperLeg","LeftLowerLeg","RightLowerLeg","LeftFoot","RightFoot"
+}
+local ESPObjects = {}
+
+-- ===== AIM FUNCTIONS =====
+local function isVisible(targetPart)
+    local origin = Camera.CFrame.Position
+    local direction = targetPart.Position - origin
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    raycastParams.IgnoreWater = true
+
+    local raycastResult = workspace:Raycast(origin, direction, raycastParams)
+    return not raycastResult or raycastResult.Instance:IsDescendantOf(targetPart.Parent)
+end
+
+local function getNearestVisibleEnemy()
+    local nearestTarget, nearestDistance = nil, math.huge
+
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer
+        and player.Team ~= LocalPlayer.Team
+        and player.Character
+        and player.Character:FindFirstChild("Humanoid")
+        and player.Character.Humanoid.Health > 0 then
+
+            local head = player.Character:FindFirstChild("Head")
+            if head and isVisible(head) then
+                local dist = (head.Position - Camera.CFrame.Position).Magnitude
+                if dist <= MAX_AIM_DISTANCE and dist < nearestDistance then
+                    nearestDistance = dist
+                    nearestTarget = head
+                end
+            end
+        end
+    end
+
+    return nearestTarget
+end
+
+-- ===== ESP FUNCTIONS =====
+local function createBillboardGui(part, size, color, image)
+    local billboardGui = Instance.new("BillboardGui")
+    billboardGui.Adornee = part
+    billboardGui.Size = size
+    billboardGui.AlwaysOnTop = true
+    billboardGui.ResetOnSpawn = false
+
+    local frame = Instance.new("Frame")
+    frame.BackgroundColor3 = color
+    frame.BackgroundTransparency = 0.5
+    frame.Size = UDim2.new(1, 0, 1, 0)
+    frame.Parent = billboardGui
+    frame.AnchorPoint = Vector2.new(0.5, 0.5)
+    frame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    frame.BorderSizePixel = 0
+
+    if image then
+        frame.BackgroundTransparency = 0.9
+        local imgLabel = Instance.new("ImageLabel")
+        imgLabel.Image = image
+        imgLabel.Size = UDim2.new(1, 0, 1, 0)
+        imgLabel.BackgroundTransparency = 0.8
+        imgLabel.Parent = frame
+        imgLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+        imgLabel.Position = UDim2.new(0.5, 0, 0.5, 0)
+    end
+
+    billboardGui.Parent = part
+    return billboardGui
+end
+
+local function createESPForPlayer(player)
+    if ESPObjects[player] then return end
+    local character = player.Character
+    if not character then return end
+
+    local espData = {}
+    for _, partName in ipairs(ESPParts) do
+        local part = character:FindFirstChild(partName)
+        if part and part:IsA("BasePart") then
+            if partName == "Head" then
+                espData[partName] = createBillboardGui(part, UDim2.new(0, 40, 0, 40), Color3.new(0,1,0), "rbxassetid://3606521361")
+            else
+                espData[partName] = createBillboardGui(part, UDim2.new(0, 6, 0, 6), Color3.new(0,1,0))
+            end
+        end
+    end
+    ESPObjects[player] = espData
+end
+
+local function removeESPForPlayer(player)
+    local espData = ESPObjects[player]
+    if espData then
+        for _, gui in pairs(espData) do
+            if gui and gui.Parent then gui:Destroy() end
+        end
+        ESPObjects[player] = nil
+    end
+end
+
+local function updateESP()
+    if not aimEnabled then
+        for player in pairs(ESPObjects) do
+            removeESPForPlayer(player)
+        end
+        return
+    end
+
+    for player, espData in pairs(ESPObjects) do
+        local character = player.Character
+        local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+        if not character or not humanoid or humanoid.Health <= 0 or player.Team == LocalPlayer.Team then
+            removeESPForPlayer(player)
+        end
+    end
+
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Team ~= LocalPlayer.Team then
+            local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+            if humanoid and humanoid.Health > 0 and not ESPObjects[player] then
+                createESPForPlayer(player)
+            end
+        end
+    end
+end
+
+-- ===== PUBLIC API =====
+function AimESPModule.ToggleAim()
+    aimEnabled = not aimEnabled
+    if aimEnabled then
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Team ~= LocalPlayer.Team then
+                createESPForPlayer(player)
+            end
+        end
+    else
+        for player in pairs(ESPObjects) do
+            removeESPForPlayer(player)
+        end
+    end
+end
+
+function AimESPModule.IsAimEnabled()
+    return aimEnabled
+end
+
+RunService.Heartbeat:Connect(function()
+    if aimEnabled then
+        local target = getNearestVisibleEnemy()
+        if target then
+            local cameraPos = Camera.CFrame.Position
+            Camera.CFrame = CFrame.new(cameraPos, target.Position)
+        end
+    end
+    updateESP()
+end)
+
+return AimESPModule
