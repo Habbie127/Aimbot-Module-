@@ -15,8 +15,6 @@ function AimlockModule.Init(player, char, camera)
 	local humanoid = char:WaitForChild("Humanoid")
 	local aimlockEnabled = false
 	local bossAimlockEnabled = false
-	local FOV = 75
-	local OFFSET = Vector3.new(0, 2.5, 0)
 	local currentTarget = nil
 	local currentTool = nil
 	local vActive, zActive = false, false
@@ -25,27 +23,8 @@ function AimlockModule.Init(player, char, camera)
 	local tiltConn, preTiltCFrame, healthConn = nil, nil, nil
 	local highlights, bossHighlights = {}, {}
 	local connections = {}
-
--- =========================
--- Ipad View
--- =========================
-local function applySettings()
-	if not player.Character then return end
-	local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-	if humanoid then
-		humanoid.CameraOffset = OFFSET
-	end
-	camera.FieldOfView = FOV
-end
-
-player.CharacterAdded:Connect(function(char)
-	char:WaitForChild("Humanoid")
-	applySettings()
-end)
-
-if player.Character then
-	applySettings()
-end
+	local currentEnemyTarget = nil
+	local currentBossTarget = nil
 
 -- =========================
 -- Team Check
@@ -131,7 +110,8 @@ local function getNearestBoss(maxDistance)
 	local bossFolder = Workspace:FindFirstChild("Enemies")
 	if bossFolder then
 		for _, boss in pairs(bossFolder:GetChildren()) do
-			if boss:FindFirstChild("HumanoidRootPart") then
+			local humanoid = boss:FindFirstChildOfClass("Humanoid")
+			if boss:FindFirstChild("HumanoidRootPart") and humanoid and humanoid.Health > 0 then
 				local bossHRP = boss.HumanoidRootPart
 				local dist = (bossHRP.Position - hrp.Position).Magnitude
 				if dist < shortest then
@@ -141,7 +121,6 @@ local function getNearestBoss(maxDistance)
 			end
 		end
 	end
-	
 	return nearest
 end
 
@@ -152,7 +131,6 @@ local renderConnMain = RunService.RenderStepped:Connect(function()
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
 
-    -- Highlight players
     for _, p in pairs(Players:GetPlayers()) do
         if p ~= player and isEnemy(p) and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
             local humanoid = p.Character:FindFirstChildOfClass("Humanoid")
@@ -201,28 +179,36 @@ local renderConnMain = RunService.RenderStepped:Connect(function()
         end
     end
 
-    applySettings()
-
     if not tiltEnabled then
         if aimlockEnabled then
-            local targetHRP = getNearestEnemy(500) 
-            if targetHRP then
-                local dist = (targetHRP.Position - camera.CFrame.Position).Magnitude
-                local tiltFactor = math.clamp(dist / 40, 0, 0.3)
-                local lookVector = (targetHRP.Position - camera.CFrame.Position).Unit
+            if not currentEnemyTarget or not currentEnemyTarget.Parent 
+                or not currentEnemyTarget.Parent:FindFirstChildOfClass("Humanoid") 
+                or currentEnemyTarget.Parent:FindFirstChildOfClass("Humanoid").Health <= 0 then
+                currentEnemyTarget = getNearestEnemy(500)
+            end
+
+            if currentEnemyTarget then
+                local dist = (currentEnemyTarget.Position - camera.CFrame.Position).Magnitude
+                local tiltFactor = math.clamp(dist / 40, 0, 0.08)
+                local lookVector = (currentEnemyTarget.Position - camera.CFrame.Position).Unit
                 local tiltedLook = Vector3.new(lookVector.X, lookVector.Y - tiltFactor, lookVector.Z)
-                camera.CFrame = CFrame.new(camera.CFrame.Position, targetHRP.Position + tiltedLook)
+                camera.CFrame = CFrame.new(camera.CFrame.Position, currentEnemyTarget.Position + tiltedLook)
             end
         end
 
         if bossAimlockEnabled then
-            local bossHRP = getNearestBoss(500)
-            if bossHRP then
-                local dist = (bossHRP.Position - camera.CFrame.Position).Magnitude
-                local tiltFactor = math.clamp(dist / 40, 0, 0.3)
-                local lookVector = (bossHRP.Position - camera.CFrame.Position).Unit
+            if not currentBossTarget or not currentBossTarget.Parent 
+                or not currentBossTarget.Parent:FindFirstChildOfClass("Humanoid") 
+                or currentBossTarget.Parent:FindFirstChildOfClass("Humanoid").Health <= 0 then
+                currentBossTarget = getNearestBoss(500)
+            end
+
+            if currentBossTarget then
+                local dist = (currentBossTarget.Position - camera.CFrame.Position).Magnitude
+                local tiltFactor = math.clamp(dist / 40, 0, 0.08)
+                local lookVector = (currentBossTarget.Position - camera.CFrame.Position).Unit
                 local tiltedLook = Vector3.new(lookVector.X, lookVector.Y - tiltFactor, lookVector.Z)
-                camera.CFrame = CFrame.new(camera.CFrame.Position, bossHRP.Position + tiltedLook)
+                camera.CFrame = CFrame.new(camera.CFrame.Position, currentBossTarget.Position + tiltedLook)
             end
         end
     end
