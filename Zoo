@@ -205,15 +205,21 @@ local renderConnMain = RunService.RenderStepped:Connect(function()
     if not tiltEnabled then
         if aimlockEnabled then
             local target = getNearestEnemy(500)  
+            local tiltFactor = math.clamp(dist / 40, 0, 0.08)
+            local lookVector = (targetHRP.Position - camera.CFrame.Position).Unit
+            local tiltedLook = Vector3.new(lookVector.X, lookVector.Y - tiltFactor, lookVector.Z) 
             if target then  
-                camera.CFrame = CFrame.new(camera.CFrame.Position, target.Position)  
+                camera.CFrame = CFrame.new(camera.CFrame.Position, target.Position + tiltedLook)  
             end
         end
         
         if bossAimlockEnabled then  
-            local targetBoss = getNearestBoss(500)  
+            local targetBoss = getNearestBoss(500) 
+            local tiltFactor = math.clamp(dist / 40, 0, 0.08)
+            local lookVector = (targetHRP.Position - camera.CFrame.Position).Unit
+            local tiltedLook = Vector3.new(lookVector.X, lookVector.Y - tiltFactor, lookVector.Z)
             if targetBoss then  
-                camera.CFrame = CFrame.new(camera.CFrame.Position, targetBoss.Position)  
+                camera.CFrame = CFrame.new(camera.CFrame.Position, targetBoss.Position + tiltedLook)  
              end
          end
     end
