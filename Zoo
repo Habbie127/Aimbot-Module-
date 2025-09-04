@@ -189,7 +189,7 @@ local renderConnMain = RunService.RenderStepped:Connect(function()
 
             if currentEnemyTarget then
                 local dist = (currentEnemyTarget.Position - camera.CFrame.Position).Magnitude
-                local tiltFactor = math.clamp(dist / 40, 0, 0.08)
+                local tiltFactor = math.clamp(dist / 40, 0, 0.04)
                 local lookVector = (currentEnemyTarget.Position - camera.CFrame.Position).Unit
                 local tiltedLook = Vector3.new(lookVector.X, lookVector.Y - tiltFactor, lookVector.Z).Unit
                 camera.CFrame = CFrame.new(camera.CFrame.Position, camera.CFrame.Position + tiltedLook)
@@ -205,7 +205,7 @@ local renderConnMain = RunService.RenderStepped:Connect(function()
 
             if currentBossTarget then
                 local dist = (currentBossTarget.Position - camera.CFrame.Position).Magnitude
-                local tiltFactor = math.clamp(dist / 40, 0, 0.08)
+                local tiltFactor = math.clamp(dist / 40, 0, 0.04)
                 local lookVector = (currentBossTarget.Position - camera.CFrame.Position).Unit
                 local tiltedLook = Vector3.new(lookVector.X, lookVector.Y - tiltFactor, lookVector.Z).Unit
                 camera.CFrame = CFrame.new(camera.CFrame.Position, camera.CFrame.Position + tiltedLook)
