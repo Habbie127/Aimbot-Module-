@@ -20,6 +20,7 @@ function AimlockModule.Init(player, char, camera)
 	local tiltConn, preTiltCFrame, healthConn = nil, nil, nil
 	local highlights, bossHighlights = {}, {}
 	local connections = {}
+	local enemyHealthConns = {}
 
 -- =========================
 -- Ipad View
@@ -135,94 +136,125 @@ local function getNearestBoss(maxDistance)
 end
 
 -- =========================
--- Update loop
+-- Health-Based Aimlock Optimization
+-- =========================
+local function trackEnemyHealth(npc)
+    if not npc or enemyHealthConns[npc] then return end
+    local humanoid = npc:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        enemyHealthConns[npc] = humanoid.HealthChanged:Connect(function(newHealth)
+            if newHealth <= 0 and currentTarget == npc then
+                if aimlockEnabled then
+                    currentTarget = getNearestEnemy(500)
+                elseif bossAimlockEnabled then
+                    currentTarget = getNearestBoss(500)
+                else
+                    currentTarget = nil
+                end
+            end
+        end)
+    end
+end
+
+for _, p in pairs(Players:GetPlayers()) do
+    if p.Character then
+        local hrp = p.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            trackEnemyHealth(p.Character)
+        end
+    end
+end
+
+local bossFolder = Workspace:FindFirstChild("Enemies")
+if bossFolder then
+    for _, boss in pairs(bossFolder:GetChildren()) do
+        trackEnemyHealth(boss)
+    end
+end
+
+Players.PlayerAdded:Connect(function(p)
+    p.CharacterAdded:Connect(function(c)
+        trackEnemyHealth(c)
+    end)
+end)
+
+if bossFolder then
+    bossFolder.ChildAdded:Connect(trackEnemyHealth)
+end
+
+-- =========================
+-- Main Aimlock & Highlight Loop
 -- =========================
 local renderConnMain = RunService.RenderStepped:Connect(function()
-	local hrp = char:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= player and isEnemy(p) and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local humanoid = p.Character:FindFirstChildOfClass("Humanoid")
+            if humanoid and humanoid.Health > 0 then
+                if not highlights[p] then
+                    local highlight = Instance.new("Highlight")
+                    highlight.Adornee = p.Character
+                    highlight.FillColor = Color3.fromRGB(240, 248, 255)
+                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                    highlight.Parent = p.Character
+                    highlights[p] = highlight
+                end
+            else
+                if highlights[p] then
+                    highlights[p]:Destroy()
+                    highlights[p] = nil
+                end
+            end
+        else
+            if highlights[p] then
+                highlights[p]:Destroy()
+                highlights[p] = nil
+            end
+        end
+    end
 
-	for _, p in pairs(Players:GetPlayers()) do
-		if p ~= player and isEnemy(p) and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-			local humanoid = p.Character:FindFirstChildOfClass("Humanoid")
-			if humanoid and humanoid.Health > 0 then
-				local enemyHRP = p.Character.HumanoidRootPart
-				local dist = (enemyHRP.Position - hrp.Position).Magnitude
-				if dist <= 500 then
-					if not highlights[p] then
-						local highlight = Instance.new("Highlight")
-						highlight.Adornee = p.Character
-						highlight.FillColor = Color3.fromRGB(240, 248, 255)
-						highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-						highlight.Parent = p.Character
-						highlights[p] = highlight
-					end
-				else
-					if highlights[p] then
-						highlights[p]:Destroy()
-						highlights[p] = nil
-					end
-				end
-			else
-				if highlights[p] then
-					highlights[p]:Destroy()
-					highlights[p] = nil
-				end
-			end
-		else
-			if highlights[p] then
-				highlights[p]:Destroy()
-				highlights[p] = nil
-			end
-		end
-	end
+    local bossFolder = Workspace:FindFirstChild("Enemies")
+    if bossFolder then
+        for _, boss in pairs(bossFolder:GetChildren()) do
+            local humanoid = boss:FindFirstChildOfClass("Humanoid")
+            if boss:FindFirstChild("HumanoidRootPart") and humanoid and humanoid.Health > 0 then
+                if not bossHighlights[boss] then
+                    local highlight = Instance.new("Highlight")
+                    highlight.Adornee = boss
+                    highlight.FillColor = Color3.fromRGB(0, 0, 255)
+                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                    highlight.Parent = boss
+                    bossHighlights[boss] = highlight
+                end
+            else
+                if bossHighlights[boss] then
+                    bossHighlights[boss]:Destroy()
+                    bossHighlights[boss] = nil
+                end
+            end
+        end
+    end
 
-	local bossFolder = Workspace:FindFirstChild("Enemies")
-	if bossFolder then
-		for _, boss in pairs(bossFolder:GetChildren()) do
-			local humanoid = boss:FindFirstChildOfClass("Humanoid")
-			if boss:FindFirstChild("HumanoidRootPart") and humanoid and humanoid.Health > 0 then
-				local dist = (boss.HumanoidRootPart.Position - hrp.Position).Magnitude
-				if dist <= 500 then
-					if not bossHighlights[boss] then
-						local highlight = Instance.new("Highlight")
-						highlight.Adornee = boss
-						highlight.FillColor = Color3.fromRGB(0, 0, 255)
-						highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-						highlight.Parent = boss
-						bossHighlights[boss] = highlight
-					end
-				else
-					if bossHighlights[boss] then
-						bossHighlights[boss]:Destroy()
-						bossHighlights[boss] = nil
-					end
-				end
-			else
-				if bossHighlights[boss] then
-					bossHighlights[boss]:Destroy()
-					bossHighlights[boss] = nil
-				end
-			end
-		end
-	end
-	
-	applySettings()
-	
-	if not tiltEnabled then
-		if aimlockEnabled then
-			local target = getNearestEnemy(500)
-			if target then
-				camera.CFrame = CFrame.new(camera.CFrame.Position, target.Position)
-			end
-		end
+    applySettings()
 
-		if bossAimlockEnabled then
-			local targetBoss = getNearestBoss(500)
-			if targetBoss then
-				camera.CFrame = CFrame.new(camera.CFrame.Position, targetBoss.Position)
-			end
-		end
-	end
+    if not tiltEnabled and currentTarget then
+        local humanoid = currentTarget:FindFirstChildOfClass("Humanoid")
+        if not humanoid or humanoid.Health <= 0 then
+            if aimlockEnabled then
+                currentTarget = getNearestEnemy(500)
+            elseif bossAimlockEnabled then
+                currentTarget = getNearestBoss(500)
+            else
+                currentTarget = nil
+            end
+        end
+        
+        if currentTarget then
+            camera.CFrame = CFrame.new(camera.CFrame.Position, currentTarget.PrimaryPart and currentTarget.PrimaryPart.Position or currentTarget:FindFirstChild("HumanoidRootPart").Position)
+        end
+    end
 end)
 table.insert(connections, renderConnMain)
 
@@ -495,7 +527,18 @@ local function cleanup()
     end
     connections = {}
 
-    if healthConn then healthConn:Disconnect() healthConn = nil end
+    if healthConn then
+        healthConn:Disconnect()
+        healthConn = nil
+    end
+
+    for npc, conn in pairs(enemyHealthConns) do
+        if conn.Connected then
+            conn:Disconnect()
+        end
+    end
+    
+    enemyHealthConns = {}
     disconnectTiltConn()
     currentTool = nil
     rightTouches = {}
@@ -509,9 +552,13 @@ local function cleanup()
         oldHook = nil
     end
 
-    for _, h in pairs(highlights) do h:Destroy() end
+    for _, h in pairs(highlights) do
+        h:Destroy()
+    end
     highlights = {}
-    for _, h in pairs(bossHighlights) do h:Destroy() end
+    for _, h in pairs(bossHighlights) do
+        h:Destroy()
+    end
     bossHighlights = {}
 end
 
