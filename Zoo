@@ -5,7 +5,12 @@ function AimlockModule.Init(player, char, camera)
 	local RunService = game:GetService("RunService")
 	local UserInputService = game:GetService("UserInputService")
 	local Workspace = game:GetService("Workspace")
-
+	
+    if not char then
+        player.CharacterAdded:Wait()
+        char = player.Character
+    end
+    
 	-- VARIABLES
 	local humanoid = char:WaitForChild("Humanoid")
 	local aimlockEnabled = false
@@ -102,18 +107,21 @@ end
 local function getNearestEnemy(maxDistance)
 	local hrp = char:WaitForChild("HumanoidRootPart")
 	local nearest, shortest = nil, maxDistance or 100
+
 	for _, p in pairs(Players:GetPlayers()) do
 		if p ~= player and isEnemy(p) and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-		    local humanoid = p.Character:FindFirstChildOfClass("Humanoid")
-		    if humanoid and humanoid.Health > 0 then
-			local enemyHRP = p.Character.HumanoidRootPart
-			local dist = (enemyHRP.Position - hrp.Position).Magnitude
-			if dist < shortest then
-				shortest = dist
-				nearest = enemyHRP
+			local humanoid = p.Character:FindFirstChildOfClass("Humanoid")
+			if humanoid and humanoid.Health > 0 then
+				local enemyHRP = p.Character.HumanoidRootPart
+				local dist = (enemyHRP.Position - hrp.Position).Magnitude
+				if dist < shortest then
+					shortest = dist
+					nearest = enemyHRP
+				end
 			end
 		end
 	end
+
 	return nearest
 end
 
@@ -133,34 +141,8 @@ local function getNearestBoss(maxDistance)
 			end
 		end
 	end
+	
 	return nearest
-end
-
--- =========================
--- Check Target Alive
--- =========================
-local function updateAimlockTarget()
-    if aimlockEnabled then
-        local targetAlive = currentTarget and currentTarget:FindFirstChildOfClass("Humanoid") and currentTarget.Humanoid.Health > 0
-        if not targetAlive then
-            currentTarget = getNearestEnemy(500)
-        end
-
-        if currentTarget then
-            camera.CFrame = CFrame.new(camera.CFrame.Position, currentTarget.Position)
-        end
-    end
-
-    if bossAimlockEnabled then
-        local bossAlive = currentTarget and currentTarget:FindFirstChildOfClass("Humanoid") and currentTarget.Humanoid.Health > 0
-        if not bossAlive then
-            currentTarget = getNearestBoss(500)
-        end
-
-        if currentTarget then
-            camera.CFrame = CFrame.new(camera.CFrame.Position, currentTarget.Position)
-        end
-    end
 end
 
 -- =========================
@@ -219,10 +201,21 @@ local renderConnMain = RunService.RenderStepped:Connect(function()
     end
 
     applySettings()
-    updateAimlockTarget()
 
     if not tiltEnabled then
-        updateAimlockTarget()
+        if aimlockEnabled then
+            local target = getNearestEnemy(500)  
+            if target then  
+                camera.CFrame = CFrame.new(camera.CFrame.Position, target.Position)  
+            end
+        end
+        
+        if bossAimlockEnabled then  
+            local targetBoss = getNearestBoss(500)  
+            if targetBoss then  
+                camera.CFrame = CFrame.new(camera.CFrame.Position, targetBoss.Position)  
+             end
+         end
     end
 end)
 table.insert(connections, renderConnMain)
