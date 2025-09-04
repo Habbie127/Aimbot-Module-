@@ -589,20 +589,6 @@ player.CharacterRemoving:Connect(function()
 	currentTool = nil
 end)
 
--- =========================
--- Shift Lock Aimlock Integration
--- =========================
-local CameraModule = require(player:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule"):WaitForChild("CameraModule"))
-local cameraController = CameraModule.activeCameraController
-
-RunService.RenderStepped:Connect(function()
-    if not cameraController then return end
-    local shiftLockEnabled = cameraController:GetIsMouseLocked()
-    if shiftLockEnabled and currentTarget and currentTarget.PrimaryPart then
-        cameraController:UpdateTarget(currentTarget.PrimaryPart.Position)
-    end
-end)
-
 	-- =========================
 
 	-- RETURN TABLE FOR MAIN SCRIPT USAGE
