@@ -5,10 +5,6 @@ function AimlockModule.Init(player, char, camera)
 	local RunService = game:GetService("RunService")
 	local UserInputService = game:GetService("UserInputService")
 	local Workspace = game:GetService("Workspace")
-	
-	if not char or not char.Parent then
-		char = player.Character or player.CharacterAdded:Wait()
-	end
 
 	-- VARIABLES
 	local humanoid = char:WaitForChild("Humanoid")
@@ -24,7 +20,6 @@ function AimlockModule.Init(player, char, camera)
 	local tiltConn, preTiltCFrame, healthConn = nil, nil, nil
 	local highlights, bossHighlights = {}, {}
 	local connections = {}
-	local enemyHealthConns = {}
 
 -- =========================
 -- Ipad View
@@ -109,6 +104,8 @@ local function getNearestEnemy(maxDistance)
 	local nearest, shortest = nil, maxDistance or 100
 	for _, p in pairs(Players:GetPlayers()) do
 		if p ~= player and isEnemy(p) and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+		    local humanoid = p.Character:FindFirstChildOfClass("Humanoid")
+		    if humanoid and humanoid.Health > 0 then
 			local enemyHRP = p.Character.HumanoidRootPart
 			local dist = (enemyHRP.Position - hrp.Position).Magnitude
 			if dist < shortest then
@@ -140,50 +137,30 @@ local function getNearestBoss(maxDistance)
 end
 
 -- =========================
--- Health-Based Aimlock Optimization
+-- Check Target Alive
 -- =========================
-local function trackEnemyHealth(npc)
-    if not npc or enemyHealthConns[npc] then return end
-    local humanoid = npc:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        enemyHealthConns[npc] = humanoid.HealthChanged:Connect(function(newHealth)
-            if newHealth <= 0 and currentTarget == npc then
-                if aimlockEnabled then
-                    currentTarget = getNearestEnemy(500)
-                elseif bossAimlockEnabled then
-                    currentTarget = getNearestBoss(500)
-                else
-                    currentTarget = nil
-                end
-            end
-        end)
-    end
-end
+local function updateAimlockTarget()
+    if aimlockEnabled then
+        local targetAlive = currentTarget and currentTarget:FindFirstChildOfClass("Humanoid") and currentTarget.Humanoid.Health > 0
+        if not targetAlive then
+            currentTarget = getNearestEnemy(500)
+        end
 
-for _, p in pairs(Players:GetPlayers()) do
-    if p.Character then
-        local hrp = p.Character:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            trackEnemyHealth(p.Character)
+        if currentTarget then
+            camera.CFrame = CFrame.new(camera.CFrame.Position, currentTarget.Position)
         end
     end
-end
 
-local bossFolder = Workspace:FindFirstChild("Enemies")
-if bossFolder then
-    for _, boss in pairs(bossFolder:GetChildren()) do
-        trackEnemyHealth(boss)
+    if bossAimlockEnabled then
+        local bossAlive = currentTarget and currentTarget:FindFirstChildOfClass("Humanoid") and currentTarget.Humanoid.Health > 0
+        if not bossAlive then
+            currentTarget = getNearestBoss(500)
+        end
+
+        if currentTarget then
+            camera.CFrame = CFrame.new(camera.CFrame.Position, currentTarget.Position)
+        end
     end
-end
-
-Players.PlayerAdded:Connect(function(p)
-    p.CharacterAdded:Connect(function(c)
-        trackEnemyHealth(c)
-    end)
-end)
-
-if bossFolder then
-    bossFolder.ChildAdded:Connect(trackEnemyHealth)
 end
 
 -- =========================
@@ -242,22 +219,10 @@ local renderConnMain = RunService.RenderStepped:Connect(function()
     end
 
     applySettings()
+    updateAimlockTarget()
 
-    if not tiltEnabled and currentTarget then
-        local humanoid = currentTarget:FindFirstChildOfClass("Humanoid")
-        if not humanoid or humanoid.Health <= 0 then
-            if aimlockEnabled then
-                currentTarget = getNearestEnemy(500)
-            elseif bossAimlockEnabled then
-                currentTarget = getNearestBoss(500)
-            else
-                currentTarget = nil
-            end
-        end
-        
-        if currentTarget then
-            camera.CFrame = CFrame.new(camera.CFrame.Position, currentTarget.PrimaryPart and currentTarget.PrimaryPart.Position or currentTarget:FindFirstChild("HumanoidRootPart").Position)
-        end
+    if not tiltEnabled then
+        updateAimlockTarget()
     end
 end)
 table.insert(connections, renderConnMain)
@@ -374,7 +339,6 @@ local function setTarget(npc)
 						local toolName = currentTool.Name
 						if (toolName == "Dough-Dough" and vActive) or (toolName == "Shark Anchor" and zActive) then
 							if newHealth < lastHealth then
-								print(npc.Name .. " took damage, health: " .. newHealth)
 								tiltEnabled = true
 								if next(rightTouches) then
 									startTilt()
@@ -536,13 +500,6 @@ local function cleanup()
         healthConn = nil
     end
 
-    for npc, conn in pairs(enemyHealthConns) do
-        if conn.Connected then
-            conn:Disconnect()
-        end
-    end
-    
-    enemyHealthConns = {}
     disconnectTiltConn()
     currentTool = nil
     rightTouches = {}
