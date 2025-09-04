@@ -1,566 +1,404 @@
-local AimlockModule = {}
+local AimbotModule = {}
 
-function AimlockModule.Init(player, char, camera)
-	local Players = game:GetService("Players")
-	local RunService = game:GetService("RunService")
-	local UserInputService = game:GetService("UserInputService")
-	local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
 
-	-- VARIABLES
-	local humanoid = char:WaitForChild("Humanoid")
-	local aimlockEnabled = false
-	local bossAimlockEnabled = false
-	local FOV = 75
-	local OFFSET = Vector3.new(0, 2.5, 0)
-	local currentTarget = nil
-	local currentTool = nil
-	local vActive, zActive = false, false
-	local tiltEnabled = false
-	local rightTouches = {}
-	local tiltConn, preTiltCFrame, healthConn = nil, nil, nil
-	local highlights, bossHighlights = {}, {}
-	local connections = {}
+local FOVRadius = 50
+local AimbotRange = 600
+local AimbotSmoothness = 0.3
+local useLerp = false
+local visibilityCheckEnabled = false
+local aimTargetMode = "Auto"
 
--- =========================
--- Ipad View
--- =========================
-local function applySettings()
-	if not player.Character then return end
-	local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-	if humanoid then
-		humanoid.CameraOffset = OFFSET
-	end
-	camera.FieldOfView = FOV
-end
+local aimlockEnabled = false
+local nearestAimbotEnabled = false
+local lockedTarget = nil
 
-player.CharacterAdded:Connect(function(char)
-	char:WaitForChild("Humanoid")
-	applySettings()
-end)
+local FOVGui = Instance.new("ScreenGui")
+FOVGui.Name = "FOVCircleGui"
+FOVGui.ResetOnSpawn = false
+FOVGui.Parent = game.CoreGui
 
-if player.Character then
-	applySettings()
-end
+local FOVCircle = Instance.new("Frame")
+FOVCircle.Name = "FOVCircle"
+FOVCircle.AnchorPoint = Vector2.new(0.5, 0.5)
+FOVCircle.Position = UDim2.fromScale(0.5, 0.4)
+FOVCircle.BackgroundTransparency = 1
+FOVCircle.BorderSizePixel = 0
+FOVCircle.Size = UDim2.fromOffset(FOVRadius * 2, FOVRadius * 2)
+FOVCircle.ZIndex = 10
+FOVCircle.Visible = false
+FOVCircle.Parent = FOVGui
 
--- =========================
--- Team Check
--- =========================
-local function isAllyWithMe(targetPlayer)
-	local myGui = player:FindFirstChild("PlayerGui")
-	if not myGui then return false end
+local UICorner = Instance.new("UICorner", FOVCircle)
+UICorner.CornerRadius = UDim.new(1, 0)
 
-	local scrolling = myGui:FindFirstChild("Main")
-		and myGui.Main:FindFirstChild("Allies")
-		and myGui.Main.Allies:FindFirstChild("Container")
-		and myGui.Main.Allies.Container:FindFirstChild("Allies")
-		and myGui.Main.Allies.Container.Allies:FindFirstChild("ScrollingFrame")
+local FOVOutline = Instance.new("UIStroke", FOVCircle)
+FOVOutline.Thickness = 1
+FOVOutline.Color = Color3.fromRGB(0, 255, 0)
+FOVOutline.Transparency = 0
 
-	if scrolling then
-		for _, frame in pairs(scrolling:GetDescendants()) do
-			if frame:IsA("ImageButton") and frame.Name == targetPlayer.Name then
-				return true
+local function isVisible(targetCharacter)
+	if not targetCharacter then return false end
+
+	local partsToCheck = {
+		targetCharacter:FindFirstChild("Head"),
+		targetCharacter:FindFirstChild("UpperTorso") or targetCharacter:FindFirstChild("Torso"),
+		targetCharacter:FindFirstChild("HumanoidRootPart")
+	}
+
+	local origin = Camera.CFrame.Position
+	local rayParams = RaycastParams.new()
+	rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+	rayParams.FilterDescendantsInstances = {LocalPlayer.Character}
+	rayParams.IgnoreWater = true
+
+	for _, part in ipairs(partsToCheck) do
+		if part and part:IsA("BasePart") then
+			local direction = (part.Position - origin)
+			local result = Workspace:Raycast(origin, direction, rayParams)
+
+			if result then
+				if result.Instance:IsDescendantOf(targetCharacter) then
+					return true -- Partially visible
+				end
+			else
+				return true -- No obstruction
 			end
 		end
 	end
 
-	return false
+	return false -- Fully covered
 end
 
-local function isEnemy(targetPlayer)
-	if not targetPlayer or targetPlayer == player then
-		return false
-	end
-
-	local myTeam = player.Team
-	local targetTeam = targetPlayer.Team
-
-	if myTeam and targetTeam then
-		if myTeam.Name == "Pirates" and targetTeam.Name == "Marines" then
-			return true
-		elseif myTeam.Name == "Marines" and targetTeam.Name == "Pirates" then
-			return true
-		end
-
-		if myTeam.Name == "Pirates" and targetTeam.Name == "Pirates" then
-			if isAllyWithMe(targetPlayer) then
-				return false -- ally, not enemy
-			end
-			return true
-		end
-
-		if myTeam.Name == "Marines" and targetTeam.Name == "Marines" then
-			return false
-		end
-	end
-
+local function isValidTarget(player)
+	if not player or player == LocalPlayer or not player.Character then return false end
+	local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+	local hum = player.Character:FindFirstChildOfClass("Humanoid")
+	if not hrp or not hum or hum.Health <= 0 then return false end
+	if player.Team and LocalPlayer.Team and player.Team == LocalPlayer.Team then return false end
 	return true
 end
 
--- =========================
--- Enemies Finder
--- =========================
-local function getNearestEnemy(maxDistance)
-	local hrp = char:WaitForChild("HumanoidRootPart")
-	local nearest, shortest = nil, maxDistance or 100
+local function getClosestEnemyByDistance()
+	local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+	if not character then return nil end
 
-	for _, p in pairs(Players:GetPlayers()) do
-		if p ~= player and isEnemy(p) and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-			local humanoid = p.Character:FindFirstChildOfClass("Humanoid")
-			if humanoid and humanoid.Health > 0 then
-				local enemyHRP = p.Character.HumanoidRootPart
-				local dist = (enemyHRP.Position - hrp.Position).Magnitude
-				if dist < shortest then
-					shortest = dist
-					nearest = enemyHRP
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return nil end
+
+	local closest = nil
+	local shortestDist = math.huge
+
+	for _, player in pairs(Players:GetPlayers()) do
+		if isValidTarget(player) then
+			local targetChar = player.Character
+			local head = targetChar:FindFirstChild("Head")
+			local root = targetChar:FindFirstChild("HumanoidRootPart")
+
+			local targetPart = nil
+
+			if aimTargetMode == "Head" and head then
+				targetPart = head
+			elseif aimTargetMode == "Body" and root then
+				targetPart = root
+			elseif aimTargetMode == "Auto" then
+				if head and (hrp.Position - head.Position).Magnitude < 150 then
+					targetPart = head
+				elseif root then
+					targetPart = root
+				end
+			end
+
+			local humanoid = targetChar:FindFirstChildOfClass("Humanoid")
+
+			if targetPart and humanoid and humanoid.Health > 0 then
+				local dist = (targetPart.Position - hrp.Position).Magnitude
+				if dist <= AimbotRange and (not visibilityCheckEnabled or isVisible(targetChar)) and dist < shortestDist then
+					closest = player
+					shortestDist = dist
 				end
 			end
 		end
 	end
 
-	return nearest
+	return closest
 end
 
-local function getNearestBoss(maxDistance)
-	local hrp = char:WaitForChild("HumanoidRootPart")
-	local nearest, shortest = nil, maxDistance or 500
-	local bossFolder = Workspace:FindFirstChild("Enemies")
-	if bossFolder then
-		for _, boss in pairs(bossFolder:GetChildren()) do
-			if boss:FindFirstChild("HumanoidRootPart") then
-				local bossHRP = boss.HumanoidRootPart
-				local dist = (bossHRP.Position - hrp.Position).Magnitude
-				if dist < shortest then
-					shortest = dist
-					nearest = bossHRP
+local function getClosestEnemyFOV()
+	local closest, minDist = nil, FOVRadius
+	for _, player in ipairs(Players:GetPlayers()) do
+		if isValidTarget(player) then
+			local hrp = player.Character.HumanoidRootPart
+			if not visibilityCheckEnabled or isVisible(player.Character) then
+				local screenPos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+				if onScreen then
+					local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)).Magnitude
+					if dist < minDist then
+						minDist = dist
+						closest = player
+					end
 				end
 			end
 		end
 	end
-	
-	return nearest
+	return closest
 end
 
--- =========================
--- Check Target Alive
--- =========================
-local function updateAimlockTarget()
-    if aimlockEnabled then
-        local targetAlive = currentTarget and currentTarget:FindFirstChildOfClass("Humanoid") and currentTarget.Humanoid.Health > 0
-        if not targetAlive then
-            currentTarget = getNearestEnemy(500)
-        end
+local WeaponBulletSpeeds = {
+	["Lewis Gun"] = 3300, ["Madsen 1905"] = 3400, ["CSRG 1915"] = 3450,
+    ["Doppelpistole 1912"] = 2400, ["Gewehr 98"] = 4200, ["Beholla 1915"] = 2200,
+    ["Farquhar Hill P08"] = 3500, ["Karabiner 98AZ"] = 3600, ["Mannlicher 1895"] = 4200,
+    ["MG 15na"] = 3225, ["MP18,-I"] = 1300, ["Selbstlader 1906"] = 3600,
+    ["RSC 1917"] = 3600, ["Ribeyrolles 1918"] = 2600, ["Lebel 1886/93"] = 3900, 
+    ["Enfield P1914"] = 4200, ["Mosin 1891"] = 4200, ["Mannlicher 1895 Stutzen"] = 3600, 
+    ["Berthier 1892/16"] = 3600, ["SMLE Mk III"] = 3500, ["MP18,-I"] = 2600, 
+    ["Steyr Hahn 1912"] = 2250, ["Huot Automatic Rifle"] = 2700, ["Fedorov Avtomat"] = 2600, 
+    ["Repetierpistole 1912/16"] = 2250, ["Mauser 1914"] = 2200, ["Ruby 1915"] = 2200, 
+    ["Webley & Scott 1913"] = 2200, ["Frommer Stop 1912"] = 2200, ["Mannlicher 1895 Scoped"] = 3900, 
+    ["Enfield P1914 Scoped"] = 4200, ["Luger P08"] = 2250, ["St. Etienne 1892"] = 2400, 
+}
 
-        if currentTarget then
-            camera.CFrame = CFrame.new(camera.CFrame.Position, currentTarget.Position)
-        end
-    end
-
-    if bossAimlockEnabled then
-        local bossAlive = currentTarget and currentTarget:FindFirstChildOfClass("Humanoid") and currentTarget.Humanoid.Health > 0
-        if not bossAlive then
-            currentTarget = getNearestBoss(500)
-        end
-
-        if currentTarget then
-            camera.CFrame = CFrame.new(camera.CFrame.Position, currentTarget.Position)
-        end
-    end
+local function getCurrentBulletSpeed()
+	local character = LocalPlayer.Character
+	if character then
+		local tool = character:FindFirstChildOfClass("Tool")
+		if tool then
+			return WeaponBulletSpeeds[tool.Name] or 2400
+		end
+	end
+	return 2400
 end
 
--- =========================
--- Main Aimlock & Highlight Loop
--- =========================
-local renderConnMain = RunService.RenderStepped:Connect(function()
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    
-    for _, p in pairs(Players:GetPlayers()) do
-        if p ~= player and isEnemy(p) and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-            local humanoid = p.Character:FindFirstChildOfClass("Humanoid")
-            if humanoid and humanoid.Health > 0 then
-                if not highlights[p] then
-                    local highlight = Instance.new("Highlight")
-                    highlight.Adornee = p.Character
-                    highlight.FillColor = Color3.fromRGB(240, 248, 255)
-                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                    highlight.Parent = p.Character
-                    highlights[p] = highlight
-                end
-            else
-                if highlights[p] then
-                    highlights[p]:Destroy()
-                    highlights[p] = nil
-                end
-            end
-        else
-            if highlights[p] then
-                highlights[p]:Destroy()
-                highlights[p] = nil
-            end
-        end
-    end
+local function calculateBulletDrop(distance, bulletSpeed)
+	if distance > 500 then
+		return math.min((distance - 500) / 200, 3)
+	end
+	return 0
+end
 
-    local bossFolder = Workspace:FindFirstChild("Enemies")
-    if bossFolder then
-        for _, boss in pairs(bossFolder:GetChildren()) do
-            local humanoid = boss:FindFirstChildOfClass("Humanoid")
-            if boss:FindFirstChild("HumanoidRootPart") and humanoid and humanoid.Health > 0 then
-                if not bossHighlights[boss] then
-                    local highlight = Instance.new("Highlight")
-                    highlight.Adornee = boss
-                    highlight.FillColor = Color3.fromRGB(0, 0, 255)
-                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                    highlight.Parent = boss
-                    bossHighlights[boss] = highlight
-                end
-            else
-                if bossHighlights[boss] then
-                    bossHighlights[boss]:Destroy()
-                    bossHighlights[boss] = nil
-                end
-            end
-        end
-    end
+local targetVelocities = {}
 
-    applySettings()
-
-    if not tiltEnabled then
-        updateAimlockTarget()
-    end
+Players.PlayerRemoving:Connect(function(player)
+	targetVelocities[player] = nil
 end)
-table.insert(connections, renderConnMain)
 
--- =========================
--- Tilt Camera Function
--- =========================
-local function disconnectTiltConn()
-	if tiltConn then
-		tiltConn:Disconnect()
-		tiltConn = nil
+local function getEnhancedVelocity(player)
+	if not isValidTarget(player) then return Vector3.zero end
+	local hrp = player.Character.HumanoidRootPart
+	local currentVel = hrp.Velocity
+
+	if not targetVelocities[player] then
+		targetVelocities[player] = {
+			history = {},
+			lastPos = hrp.Position,
+			lastTime = tick(),
+			smoothedVel = currentVel
+		}
 	end
-end
 
-local function stopTiltSmooth()
-	disconnectTiltConn()
-	if not preTiltCFrame then return end
+	local data = targetVelocities[player]
+	local now = tick()
+	local dt = now - data.lastTime
 
-	local startCF = camera.CFrame
-	local endCF = preTiltCFrame
-	preTiltCFrame = nil
+	if dt > 0.01 then
+		local deltaPos = hrp.Position - data.lastPos
+		local calcVel = deltaPos / dt
+		table.insert(data.history, {vel = currentVel, calculated = calcVel})
+		if #data.history > 5 then table.remove(data.history, 1) end
 
-	local a = 0
-	local restoreConn
-	restoreConn = RunService.RenderStepped:Connect(function(dt)
-		a = math.min(a + dt * 5, 1)
-		camera.CFrame = startCF:Lerp(endCF, a)
-		if a >= 1 then
-			restoreConn:Disconnect()
+		local weighted = Vector3.zero
+		local totalWeight = 0
+		for i, sample in ipairs(data.history) do
+			local w = i * i
+			weighted += sample.calculated * w
+			totalWeight += w
 		end
-	end)
+		data.smoothedVel = (weighted / totalWeight)
+		data.smoothedVel = Vector3.new(data.smoothedVel.X, 0, data.smoothedVel.Z)
+
+		data.lastPos = hrp.Position
+		data.lastTime = now
+	end
+
+	return data.smoothedVel
 end
 
-local function startTilt()
-	disconnectTiltConn()
+local function getPredictedPosition(targetCharacter, targetVelocity, distance, bulletSpeed)
+	local origin = Camera.CFrame.Position
+	local toTarget = targetCharacter.Position - origin
 
-	preTiltCFrame = preTiltCFrame or camera.CFrame
-	local hrp = char:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
-	local humanoid = char:FindFirstChildOfClass("Humanoid")
-	if not humanoid then return end
+	local a = targetVelocity:Dot(targetVelocity) - bulletSpeed^2
+	local b = 2 * toTarget:Dot(targetVelocity)
+	local c = toTarget:Dot(toTarget)
 
-	local startCF = camera.CFrame
-	local camPos = startCF.Position
+	local discriminant = b * b - 4 * a * c
 
-	local tiltOffset
-	if humanoid.FloorMaterial ~= Enum.Material.Air then
-		tiltOffset = Vector3.new(0, 10, 0)
+	if discriminant < 0 or math.abs(a) < 1e-6 then
+		local time = toTarget.Magnitude / bulletSpeed
+		local latencyCompensation = math.clamp(time * 0.4, 0.05, 0.3)
+		return targetCharacter.Position + targetVelocity * (time + latencyCompensation)
+	end
+
+	local sqrtDisc = math.sqrt(discriminant)
+	local t1 = (-b - sqrtDisc) / (2 * a)
+	local t2 = (-b + sqrtDisc) / (2 * a)
+
+	local hitTime = math.huge
+	if t1 > 0 and t2 > 0 then
+		hitTime = math.min(t1, t2)
+	elseif t1 > 0 then
+		hitTime = t1
+	elseif t2 > 0 then
+		hitTime = t2
 	else
-		tiltOffset = Vector3.new(0, 30, 0)
+		hitTime = nil
 	end
 
-	local downLook = hrp.Position - tiltOffset
-	local targetCF = CFrame.new(camPos, downLook)
+	if not hitTime then
+		return targetCharacter.Position
+	end
 
-	local alpha = 0
-	tiltConn = RunService.RenderStepped:Connect(function(dt)
-		if not (tiltEnabled and next(rightTouches) and hrp.Parent) then
-			stopTiltSmooth()
-			return
-		end
+	local leadFactor = 1.1
+	local predicted = targetCharacter.Position + targetVelocity * hitTime * leadFactor
 
-		if alpha < 1 then
-			alpha = math.min(alpha + dt * 2, 1)
-			camera.CFrame = startCF:Lerp(targetCF, alpha)
+	local latencyCompensation = math.clamp(hitTime * 0.4, 0.05, 0.3)
+	predicted = predicted + targetVelocity * latencyCompensation
+
+	local drop = calculateBulletDrop(distance, bulletSpeed)
+	return predicted - Vector3.new(0, drop, 0)
+end
+
+local function getOptimalAimPoint(target)
+	if not isValidTarget(target) then return nil end
+
+	local hrp = target.Character.HumanoidRootPart
+	local head = target.Character:FindFirstChild("Head")
+	local velocity = getEnhancedVelocity(target)
+	local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
+	local bulletSpeed = getCurrentBulletSpeed()
+
+	local targetCharacter = hrp
+	local aimOffset = Vector3.zero
+
+	if aimTargetMode == "Head" and head then
+		targetCharacter = head
+	elseif aimTargetMode == "Body" then
+		targetCharacter = hrp
+	elseif aimTargetMode == "Auto" then
+		if head and distance < 150 then
+			targetCharacter = head
+		elseif distance < 350 then
+			aimOffset = Vector3.new(0, 1.0, 0)
 		else
-			camera.CFrame = targetCF
+			aimOffset = Vector3.new(0, 0.5, 0)
 		end
-	end)
+	end
+
+	local predicted = getPredictedPosition(targetCharacter, velocity, distance, bulletSpeed)
+	return predicted + aimOffset
 end
 
--- =========================
--- Touch tracking
--- =========================
-UserInputService.TouchStarted:Connect(function(touch)
-	if touch.Position.X > camera.ViewportSize.X / 2 then
-		rightTouches[touch] = true
-		if tiltEnabled then
-			startTilt()
-		end
-	end
-end)
-
-UserInputService.TouchEnded:Connect(function(touch)
-	if rightTouches[touch] then
-		rightTouches[touch] = nil
-		if not next(rightTouches) then
-			stopTiltSmooth()
-			tiltEnabled = false
-			vActive = false
-			zActive = false
-		end
-	end
-end)
-
--- =========================
--- Target tracking Health with Raycast
--- =========================
-local function setTarget(npc)
-	if npc ~= currentTarget then
-		if healthConn then
-			healthConn:Disconnect()
-			healthConn = nil
-		end
-		currentTarget = nil
-
-		if npc then
-			currentTarget = npc
-			local humanoid = npc:FindFirstChildOfClass("Humanoid")
-			if humanoid then
-				local lastHealth = humanoid.Health
-				healthConn = humanoid.HealthChanged:Connect(function(newHealth)
-					if currentTool then
-						local toolName = currentTool.Name
-						if (toolName == "Dough-Dough" and vActive) or (toolName == "Shark Anchor" and zActive) then
-							if newHealth < lastHealth then
-								tiltEnabled = true
-								if next(rightTouches) then
-									startTilt()
-								end
-							end
-						end
-					end
-					lastHealth = newHealth
-				end)
-			end
-		end
+local function smoothLook(targetPos)
+	local camPos = Camera.CFrame.Position
+	local desiredLook = (targetPos - camPos).Unit
+	if useLerp then
+		local lerped = Camera.CFrame.LookVector:Lerp(desiredLook, AimbotSmoothness)
+		Camera.CFrame = CFrame.new(camPos, camPos + lerped)
+	else
+		Camera.CFrame = CFrame.new(camPos, targetPos)
 	end
 end
 
-local renderConnRaycast = RunService.RenderStepped:Connect(function()
-	local whitelist = {}
+RunService.Heartbeat:Connect(function()
+	local character = LocalPlayer.Character
+	if not character then return end
 
-	if aimlockEnabled then
-		for _, p in pairs(Players:GetPlayers()) do
-			if p ~= player and isEnemy(p) and p.Character then
-				table.insert(whitelist, p.Character)
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	if lockedTarget then
+		local targetChar = lockedTarget.Character
+		local targetHRP = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
+		local humanoid = targetChar and targetChar:FindFirstChildOfClass("Humanoid")
+
+		if not humanoid or humanoid.Health <= 0 or not targetHRP then
+			lockedTarget = nil
+		else
+			local dist = (targetHRP.Position - hrp.Position).Magnitude
+			if dist > AimbotRange or (visibilityCheckEnabled and not isVisible(targetChar)) then
+				lockedTarget = nil
 			end
 		end
 	end
 
-	if bossAimlockEnabled then
-		local bossFolder = Workspace:FindFirstChild("Enemies")
-		if bossFolder then
-			for _, boss in pairs(bossFolder:GetChildren()) do
-				table.insert(whitelist, boss)
-			end
-		end
+	if not lockedTarget then
+		lockedTarget = getClosestEnemyByDistance()
 	end
 
-	local rayParams = RaycastParams.new()
-	rayParams.FilterDescendantsInstances = whitelist
-	rayParams.FilterType = Enum.RaycastFilterType.Whitelist
-
-	local rayOrigin = camera.CFrame.Position  
-	local rayDirection = camera.CFrame.LookVector * 1000  
-	local result = Workspace:Raycast(rayOrigin, rayDirection, rayParams)  
-
-	if result and result.Instance then  
-		local npc = result.Instance:FindFirstAncestorWhichIsA("Model")  
-		if npc and npc:FindFirstChildOfClass("Humanoid") then  
-			if aimlockEnabled then
-				local targetPlayer = Players:GetPlayerFromCharacter(npc)
-				if targetPlayer and isEnemy(targetPlayer) then
-					setTarget(npc)
-					return
-				end
-			end
-
-			if bossAimlockEnabled then
-				local bossFolder = Workspace:FindFirstChild("Enemies")
-				if bossFolder and npc:IsDescendantOf(bossFolder) then
-					setTarget(npc)
-					return
-				end
-			end
-		end
+	if lockedTarget and (aimlockEnabled or nearestAimbotEnabled) then
+		local aim = getOptimalAimPoint(lockedTarget)
+		if aim then smoothLook(aim) end
 	end
-	setTarget(nil)
 end)
-table.insert(connections, renderConnRaycast)
 
--- =========================
--- Tool equip / unequip 
--- =========================
-local function hookTool(tool)
-	currentTool = tool
-	tool.AncestryChanged:Connect(function(_, parent)
-		if not parent then
-			currentTool = nil
-			vActive = false
-			zActive = false
-			tiltEnabled = false
-			stopTiltSmooth()
-		end
-	end)
+function AimbotModule.setSmooth(state)
+	useLerp = state
 end
 
-char.ChildAdded:Connect(function(child)
-	if child:IsA("Tool") then
-		hookTool(child)
-	end
-end)
-
-char.ChildRemoved:Connect(function(child)
-	if child == currentTool then
-		currentTool = nil
-		vActive = false
-		zActive = false
-		tiltEnabled = false
-		stopTiltSmooth()
-	end
-end)
-
--- =========================
--- V Skill Detection
--- =========================
-local old
-old = hookmetamethod(game, "__namecall", function(self, ...)
-	local method = getnamecallmethod()
-	local args = {...}
-
-	if (method == "InvokeServer" or method == "FireServer") then
-		local a1 = args[1]
-
-		if typeof(a1) == "string" and a1:upper() == "V" then
-			if currentTool and currentTool.Name == "Dough-Dough" then
-				vActive = true
-				local stamp = os.clock()
-				task.delay(2, function()
-					if not tiltEnabled and os.clock() - stamp >= 2 then
-						vActive = false
-					end
-				end)
-			end
-		end
-
-		if typeof(a1) == "string" and a1:upper() == "Z" then
-			if currentTool and currentTool.Name == "Shark Anchor" then
-				zActive = true
-				local stamp = os.clock()
-				task.delay(2, function()
-					if not tiltEnabled and os.clock() - stamp >= 2 then
-						zActive = false
-					end
-				end)
-			end
-		end
-
-		if currentTool and currentTool.Name == "Shark Anchor" and self.Name == "EquipEvent" then
-			local arg1 = args[1]
-			if arg1 == false then
-				currentTool = nil
-				zActive = false
-				tiltEnabled = false
-				stopTiltSmooth()
-			end
-		end
-	end
-	return old(self, ...)
-end)
-
--- =========================
--- Cleanup 
--- =========================
-local oldHook = old
-local function cleanup()
-    for _, conn in pairs(connections) do
-        if conn.Connected then conn:Disconnect() end
-    end
-    connections = {}
-
-    if healthConn then
-        healthConn:Disconnect()
-        healthConn = nil
-    end
-
-    disconnectTiltConn()
-    currentTool = nil
-    rightTouches = {}
-    vActive = false
-    zActive = false
-    tiltEnabled = false
-    preTiltCFrame = nil
-
-    if oldHook then
-        hookmetamethod(game, "__namecall", oldHook)
-        oldHook = nil
-    end
-
-    for _, h in pairs(highlights) do
-        h:Destroy()
-    end
-    highlights = {}
-    for _, h in pairs(bossHighlights) do
-        h:Destroy()
-    end
-    bossHighlights = {}
+function AimbotModule.setVisibilityCheck(state)
+	visibilityCheckEnabled = state
 end
 
--- =========================
--- lifecycle
--- =========================
-player.CharacterAdded:Connect(function(c)
-	cleanup()
-	char = c
-	humanoid = char:WaitForChild("Humanoid")
-	vActive = false
-	zActive = false
-	tiltEnabled = false
-	rightTouches = {}
-	stopTiltSmooth()
-end)
-
-player.CharacterRemoving:Connect(function()
-	vActive = false
-	zActive = false
-	tiltEnabled = false
-	rightTouches = {}
-	disconnectTiltConn()
-	currentTool = nil
-end)
-
-	-- =========================
-
-	-- RETURN TABLE FOR MAIN SCRIPT USAGE
-	return {
-		toggleAimlock = function(state)
-			aimlockEnabled = state
-		end,
-		toggleBossAimlock = function(state)
-			bossAimlockEnabled = state
-		end,
-		cleanup = cleanup
-	}
+function AimbotModule.setAimTargetMode(mode)
+	if mode == "Head" or mode == "Body" or mode == "Auto" then
+		aimTargetMode = mode
+	end
 end
 
-return AimlockModule
+function AimbotModule.setSmoothness(value)
+	AimbotSmoothness = math.clamp(value, 0.01, 1)
+end
+
+function AimbotModule.setRange(range)
+	AimbotRange = math.max(range, 50)
+end
+
+function AimbotModule.setFOVRadius(radius)
+	FOVRadius = math.max(radius, 10)
+	FOVCircle.Size = UDim2.fromOffset(FOVRadius * 2, FOVRadius * 2)
+end
+
+function AimbotModule.toggleAimlock(state)
+	aimlockEnabled = state
+end
+
+function AimbotModule.toggleNearest(state)
+	nearestAimbotEnabled = state
+end
+
+function AimbotModule.toggleFOVCircle(state)
+	FOVCircle.Visible = state
+end
+
+function AimbotModule.getDebugInfo()
+	local target = getClosestEnemyFOV() or getClosestEnemyByDistance()
+	if target then
+		local dist = (Camera.CFrame.Position - target.Character.HumanoidRootPart.Position).Magnitude
+		local vel = getEnhancedVelocity(target)
+		local bulletSpeed = getCurrentBulletSpeed()
+		return {
+			targetName = target.Name,
+			distance = math.floor(dist),
+			velocity = vel,
+			bulletSpeed = bulletSpeed,
+			aimPoint = getOptimalAimPoint(target)
+		}
+	end
+	return nil
+end
+
+return AimbotModule
