@@ -5,6 +5,10 @@ function AimlockModule.Init(player, char, camera)
 	local RunService = game:GetService("RunService")
 	local UserInputService = game:GetService("UserInputService")
 	local Workspace = game:GetService("Workspace")
+	
+	if not char or not char.Parent then
+		char = player.Character or player.CharacterAdded:Wait()
+	end
 
 	-- VARIABLES
 	local humanoid = char:WaitForChild("Humanoid")
@@ -588,7 +592,7 @@ end)
 -- =========================
 -- Shift Lock Aimlock Integration
 -- =========================
-local CameraModule = require(LocalPlayer_2:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule"):WaitForChild("CameraModule"))
+local CameraModule = require(player:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule"):WaitForChild("CameraModule"))
 local cameraController = CameraModule.activeCameraController
 
 RunService.RenderStepped:Connect(function()
