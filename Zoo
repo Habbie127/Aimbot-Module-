@@ -208,7 +208,7 @@ local renderConnMain = RunService.RenderStepped:Connect(function()
             local targetHRP = getNearestEnemy(500) 
             if targetHRP then
                 local dist = (targetHRP.Position - camera.CFrame.Position).Magnitude
-                local tiltFactor = math.clamp(dist / 40, 0, 0.08)
+                local tiltFactor = math.clamp(dist / 40, 0, 0.3)
                 local lookVector = (targetHRP.Position - camera.CFrame.Position).Unit
                 local tiltedLook = Vector3.new(lookVector.X, lookVector.Y - tiltFactor, lookVector.Z)
                 camera.CFrame = CFrame.new(camera.CFrame.Position, targetHRP.Position + tiltedLook)
@@ -219,7 +219,7 @@ local renderConnMain = RunService.RenderStepped:Connect(function()
             local bossHRP = getNearestBoss(500)
             if bossHRP then
                 local dist = (bossHRP.Position - camera.CFrame.Position).Magnitude
-                local tiltFactor = math.clamp(dist / 40, 0, 0.08)
+                local tiltFactor = math.clamp(dist / 40, 0, 0.3)
                 local lookVector = (bossHRP.Position - camera.CFrame.Position).Unit
                 local tiltedLook = Vector3.new(lookVector.X, lookVector.Y - tiltFactor, lookVector.Z)
                 camera.CFrame = CFrame.new(camera.CFrame.Position, bossHRP.Position + tiltedLook)
