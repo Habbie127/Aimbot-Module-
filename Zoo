@@ -151,7 +151,8 @@ end
 local renderConnMain = RunService.RenderStepped:Connect(function()
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
-    
+
+    -- Highlight players
     for _, p in pairs(Players:GetPlayers()) do
         if p ~= player and isEnemy(p) and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
             local humanoid = p.Character:FindFirstChildOfClass("Humanoid")
@@ -204,24 +205,26 @@ local renderConnMain = RunService.RenderStepped:Connect(function()
 
     if not tiltEnabled then
         if aimlockEnabled then
-            local target = getNearestEnemy(500)  
-            local tiltFactor = math.clamp(dist / 40, 0, 0.08)
-            local lookVector = (targetHRP.Position - camera.CFrame.Position).Unit
-            local tiltedLook = Vector3.new(lookVector.X, lookVector.Y - tiltFactor, lookVector.Z) 
-            if target then  
-                camera.CFrame = CFrame.new(camera.CFrame.Position, target.Position + tiltedLook)  
+            local targetHRP = getNearestEnemy(500) 
+            if targetHRP then
+                local dist = (targetHRP.Position - camera.CFrame.Position).Magnitude
+                local tiltFactor = math.clamp(dist / 40, 0, 0.08)
+                local lookVector = (targetHRP.Position - camera.CFrame.Position).Unit
+                local tiltedLook = Vector3.new(lookVector.X, lookVector.Y - tiltFactor, lookVector.Z)
+                camera.CFrame = CFrame.new(camera.CFrame.Position, targetHRP.Position + tiltedLook)
             end
         end
-        
-        if bossAimlockEnabled then  
-            local targetBoss = getNearestBoss(500) 
-            local tiltFactor = math.clamp(dist / 40, 0, 0.08)
-            local lookVector = (targetHRP.Position - camera.CFrame.Position).Unit
-            local tiltedLook = Vector3.new(lookVector.X, lookVector.Y - tiltFactor, lookVector.Z)
-            if targetBoss then  
-                camera.CFrame = CFrame.new(camera.CFrame.Position, targetBoss.Position + tiltedLook)  
-             end
-         end
+
+        if bossAimlockEnabled then
+            local bossHRP = getNearestBoss(500)
+            if bossHRP then
+                local dist = (bossHRP.Position - camera.CFrame.Position).Magnitude
+                local tiltFactor = math.clamp(dist / 40, 0, 0.08)
+                local lookVector = (bossHRP.Position - camera.CFrame.Position).Unit
+                local tiltedLook = Vector3.new(lookVector.X, lookVector.Y - tiltFactor, lookVector.Z)
+                camera.CFrame = CFrame.new(camera.CFrame.Position, bossHRP.Position + tiltedLook)
+            end
+        end
     end
 end)
 table.insert(connections, renderConnMain)
