@@ -343,10 +343,11 @@ local function setAimlockTarget(targetModel)
     for _, h in pairs(bossHighlights) do h.Enabled = true end
     
     if targetModel then
-        if targetModel.Parent:IsA("Model") then
-            local p = targetModel.Parent
-            if highlights[p] then highlights[p].Enabled = false end
-            if bossHighlights[p] then bossHighlights[p].Enabled = false end
+        local adorneePart
+        if targetModel:IsA("Model") then
+            adorneePart = targetModel.PrimaryPart or targetModel:FindFirstChild("HumanoidRootPart") or targetModel:FindFirstChildWhichIsA("BasePart")
+        elseif targetModel:IsA("BasePart") then
+            adorneePart = targetModel
         end
 
         local highlight = Instance.new("Highlight")
@@ -354,7 +355,7 @@ local function setAimlockTarget(targetModel)
         highlight.OutlineColor = Color3.fromRGB(255, 255, 0)
         highlight.FillTransparency = 0.5
         highlight.OutlineTransparency = 0
-        highlight.Adornee = targetModel.PrimaryPart or targetModel:FindFirstChild("HumanoidRootPart") or targetModel
+        highlight.Adornee = adorneePart
         highlight.Parent = targetModel
         currentHighlight = highlight
         
@@ -370,9 +371,9 @@ local renderConnTilt = RunService.RenderStepped:Connect(function()
     local target = nil
 
     if AimlockPlayerEnabled then
-        target = getNearestEnemy(500) -- nearest enemy player
+        target = getNearestEnemy(500)
     elseif AimlockNpcEnabled then
-        target = getNearestBoss(500) -- nearest NPC
+        target = getNearestBoss(500)
     end
 
     setAimlockTarget(target)
