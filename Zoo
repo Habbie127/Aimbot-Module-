@@ -15,7 +15,7 @@ function AimlockModule.Init(player, char, camera)
 	local AimlockPlayerEnabled = false
 	local AimlockNpcEnabled = false
 	local FOV = 80
-	local OFFSET = Vector3.new(0, 2.8, 0)
+	local OFFSET = Vector3.new(0, 1, 0)
 	local currentTarget = nil
 	local currentTool = nil
 	local vActive, zActive = false, false
