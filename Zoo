@@ -240,7 +240,6 @@ local function watchTargetHealth(targetModel)
 end
 
 local function setAimlockTarget(targetModel)
-    -- Remove previous yellow highlight
     if currentHighlight then
         currentHighlight:Destroy()
         currentHighlight = nil
@@ -251,7 +250,6 @@ local function setAimlockTarget(targetModel)
         return
     end
 
-    -- Find a proper adornee (use PrimaryPart or HumanoidRootPart)
     local adorneePart = nil
     if targetModel:IsA("Model") then
         adorneePart = targetModel.PrimaryPart or targetModel:FindFirstChild("HumanoidRootPart") or targetModel:FindFirstChildWhichIsA("BasePart")
@@ -260,7 +258,6 @@ local function setAimlockTarget(targetModel)
     end
 
     if adorneePart then
-        -- Create yellow highlight
         local highlight = Instance.new("Highlight")
         highlight.FillColor = Color3.fromRGB(255, 255, 0)
         highlight.OutlineColor = Color3.fromRGB(255, 255, 0)
@@ -281,7 +278,7 @@ end
 
 local renderConnTilt = RunService.RenderStepped:Connect(function()
     local hrp = char:FindFirstChild("HumanoidRootPart")
-        if not hrp then return end
+    if not hrp then return end
 
     if not tiltEnabled then
         if AimlockPlayerEnabled then
@@ -298,9 +295,7 @@ local renderConnTilt = RunService.RenderStepped:Connect(function()
                 local tiltedLook = Vector3.new(lookVector.X, lookVector.Y - tiltFactor, lookVector.Z).Unit
                 camera.CFrame = CFrame.new(camera.CFrame.Position, camera.CFrame.Position + tiltedLook)
             end
-        end
-
-        if AimlockNpcEnabled then
+        elseif AimlockNpcEnabled then
             if not currentBossTarget or not currentBossTarget.Parent 
                 or not currentBossTarget.Parent:FindFirstChildOfClass("Humanoid") 
                 or currentBossTarget.Parent:FindFirstChildOfClass("Humanoid").Health <= 0 then
@@ -317,7 +312,13 @@ local renderConnTilt = RunService.RenderStepped:Connect(function()
         end
     end
 
-    setAimlockTarget(currentEnemyTarget, currentBossTarget)
+    if AimlockPlayerEnabled and currentEnemyTarget then
+        setAimlockTarget(currentEnemyTarget.Parent)  -- highlight enemy model
+    elseif AimlockNpcEnabled and currentBossTarget then
+        setAimlockTarget(currentBossTarget.Parent)   -- highlight npc model
+    else
+        setAimlockTarget(nil)
+    end
 end)
 table.insert(connections, renderConnTilt)
 
