@@ -27,10 +27,6 @@ function AimlockModule.Init(player, char, camera)
 	local currentEnemyTarget = nil
 	local currentBossTarget = nil
 	local currentHighlight = nil
-	
--- =========================
--- Ipad View
--- =========================
 
 -- =========================
 -- Team Check
@@ -317,102 +313,115 @@ end)
 -- =========================
 -- Target tracking with Dot cursor & Health detection (Players + NPCs)
 -- =========================
+local function getAllParts(model)
+    local parts = {}
+    for _, descendant in pairs(model:GetDescendants()) do
+        if descendant:IsA("BasePart") then
+            table.insert(parts, descendant)
+        end
+    end
+    return parts
+end
+
 local function clearHighlight()
-	if currentHighlight then
-		currentHighlight:Destroy()
-		currentHighlight = nil
-	end
+    if currentHighlight then
+        currentHighlight:Destroy()
+        currentHighlight = nil
+    end
 end
 
-local function setHighlight(npc)
-	clearHighlight()
-	if npc then
-		local highlight = Instance.new("Highlight")
-		highlight.FillColor = Color3.new(1, 1, 0) -- Yellow
-		highlight.OutlineColor = Color3.new(1, 1, 0)
-		highlight.FillTransparency = 0.5
-		highlight.OutlineTransparency = 0
-		highlight.Adornee = npc
-		highlight.Parent = npc
-		currentHighlight = highlight
-	end
+local function setHighlight(targetModel, color)
+    clearHighlight()
+    if targetModel then
+        local highlight = Instance.new("Highlight")
+        highlight.FillColor = color or Color3.fromRGB(255, 255, 0) -- default yellow
+        highlight.OutlineColor = color or Color3.fromRGB(255, 255, 0)
+        highlight.FillTransparency = 0.5
+        highlight.OutlineTransparency = 0
+        highlight.Adornee = targetModel.PrimaryPart or targetModel:FindFirstChild("HumanoidRootPart") or targetModel
+        highlight.Parent = targetModel
+        currentHighlight = highlight
+    end
 end
 
-local function setTarget(npc)
-	if npc ~= currentTarget then
-		if healthConn then
-			healthConn:Disconnect()
-			healthConn = nil
-		end
-		currentTarget = npc
-		clearHighlight()
+local function setTarget(targetModel)
+    if targetModel ~= currentTarget then
+        if healthConn then
+            healthConn:Disconnect()
+            healthConn = nil
+        end
 
-		if npc then
-			setHighlight(npc)
+        currentTarget = targetModel
+        clearHighlight()
 
-			local humanoid = npc:FindFirstChildOfClass("Humanoid")
-			if humanoid then
-				local lastHealth = humanoid.Health
-				healthConn = humanoid.HealthChanged:Connect(function(newHealth)
-					if currentTool then
-						local toolName = currentTool.Name
-						if (toolName == "Dough-Dough" and vActive) or (toolName == "Shark Anchor" and zActive) then
-							if newHealth < lastHealth then
-								tiltEnabled = true
-								if next(rightTouches) then
-									startTilt()
-								end
-							end
-						end
-					end
-					lastHealth = newHealth
-				end)
-			end
-		end
-	end
+        if targetModel then
+            setHighlight(targetModel, Color3.fromRGB(255, 255, 0))
+
+            local humanoid = targetModel:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                local lastHealth = humanoid.Health
+                healthConn = humanoid.HealthChanged:Connect(function(newHealth)
+                    if currentTool then
+                        local toolName = currentTool.Name
+                        if (toolName == "Dough-Dough" and vActive) or (toolName == "Shark Anchor" and zActive) then
+                            if newHealth < lastHealth then
+                                tiltEnabled = true
+                                if next(rightTouches) then
+                                    startTilt()
+                                end
+                            end
+                        end
+                    end
+                    lastHealth = newHealth
+                end)
+            end
+        end
+    end
 end
 
 local renderConnDot = RunService.RenderStepped:Connect(function()
-	if not cursorDot1 or not cursorDot1.Parent then return end
+    if not cursorDot1 or not cursorDot1.Parent then return end
 
-	local dotPos = cursorDot1.AbsolutePosition + cursorDot1.AbsoluteSize / 2
-	local viewportPoint = Vector2.new(dotPos.X, dotPos.Y)
-	local ray = camera:ScreenPointToRay(viewportPoint.X, viewportPoint.Y)
-	
+    local dotPos = cursorDot1.AbsolutePosition + cursorDot1.AbsoluteSize / 2
+    local ray = camera:ScreenPointToRay(dotPos.X, dotPos.Y)
 
-	local rayParams = RaycastParams.new()
-	rayParams.FilterDescendantsInstances = {}
-	rayParams.FilterType = Enum.RaycastFilterType.Whitelist
+    local rayParams = RaycastParams.new()
+    rayParams.FilterType = Enum.RaycastFilterType.Whitelist
+    rayParams.FilterDescendantsInstances = {}
 
-	if AimlockNpcEnabled then
-		local enemiesFolder = Workspace:FindFirstChild("Enemies")
-		if enemiesFolder then
-			for _, npc in pairs(enemiesFolder:GetChildren()) do
-				if npc:FindFirstChildOfClass("Humanoid") then
-					table.insert(rayParams.FilterDescendantsInstances, npc)
-				end
-			end
-		end
-	end
+    if AimlockNpcEnabled then
+        local enemiesFolder = Workspace:FindFirstChild("Enemies")
+        if enemiesFolder then
+            for _, npc in pairs(enemiesFolder:GetChildren()) do
+                if npc:FindFirstChildOfClass("Humanoid") then
+                    for _, part in pairs(getAllParts(npc)) do
+                        table.insert(rayParams.FilterDescendantsInstances, part)
+                    end
+                end
+            end
+        end
+    end
 
-	if AimlockPlayerEnabled then
-		for _, p in pairs(Players:GetPlayers()) do
-			if p ~= player and isEnemy(p) and p.Character and p.Character:FindFirstChildOfClass("Humanoid") then
-				table.insert(rayParams.FilterDescendantsInstances, p.Character)
-			end
-		end
-	end
+    if AimlockPlayerEnabled then
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= player and isEnemy(p) and p.Character then
+                for _, part in pairs(getAllParts(p.Character)) do
+                    table.insert(rayParams.FilterDescendantsInstances, part)
+                end
+            end
+        end
+    end
 
-	local raycastResult = Workspace:Raycast(ray.Origin, ray.Direction * 1000, rayParams)
-	if raycastResult and raycastResult.Instance then
-		local npc = raycastResult.Instance:FindFirstAncestorOfClass("Model")
-		if npc and npc:FindFirstChildOfClass("Humanoid") then
-			setTarget(npc)
-			return
-		end
-	end
+    local raycastResult = Workspace:Raycast(ray.Origin, ray.Direction * 1000, rayParams)
+    if raycastResult and raycastResult.Instance then
+        local model = raycastResult.Instance:FindFirstAncestorOfClass("Model")
+        if model and model:FindFirstChildOfClass("Humanoid") then
+            setTarget(model)
+            return
+        end
+    end
 
-	setTarget(nil)
+    setTarget(nil)
 end)
 table.insert(connections, renderConnDot)
 
@@ -540,7 +549,6 @@ end
 player.CharacterAdded:Connect(function(c)
 	cleanup()
 	char = c
-	applySettings()
 	humanoid = char:WaitForChild("Humanoid")
 	vActive = false
 	zActive = false
