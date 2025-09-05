@@ -15,7 +15,7 @@ function AimlockModule.Init(player, char, camera)
 	local AimlockPlayerEnabled = false
 	local AimlockNpcEnabled = false
 	local FOV = 80
-	local OFFSET = Vector3.new(0, 1, 0)
+	local OFFSET = Vector3.new(0, 2.8, 0)
 	local currentTarget = nil
 	local currentTool = nil
 	local vActive, zActive = false, false
@@ -43,7 +43,6 @@ end
 if player.Character then
 	applySettings()
 end
-
 
 -- =========================
 -- Team Check
@@ -391,56 +390,29 @@ local function setTarget(npc)
 end
 
 local renderConnRaycast = RunService.RenderStepped:Connect(function()
-	local whitelist = {}
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
 
-	if AimlockPlayerEnabled then  
-		for _, p in pairs(Players:GetPlayers()) do  
-			if p ~= player and isEnemy(p) and p.Character then  
-				table.insert(whitelist, p.Character)  
-			end  
-		end  
-	end  
+	if AimlockPlayerEnabled then
+		local target = getNearestEnemy(500)
+		if target then
+			camera.CFrame = CFrame.new(camera.CFrame.Position, target.Position)
+			setTarget(target.Parent)
+		else
+			setTarget(nil)
+		end
+	end
 
-	if AimlockNpcEnabled then  
-		local bossFolder = Workspace:FindFirstChild("Enemies")  
-		if bossFolder then  
-			for _, boss in pairs(bossFolder:GetChildren()) do  
-				table.insert(whitelist, boss)  
-			end  
-		end  
-	end  
-
-	local rayParams = RaycastParams.new()  
-	rayParams.FilterDescendantsInstances = whitelist  
-	rayParams.FilterType = Enum.RaycastFilterType.Whitelist  
-
-	local rayOrigin = camera.CFrame.Position    
-	local rayDirection = camera.CFrame.LookVector * 1000    
-	local result = Workspace:Raycast(rayOrigin, rayDirection, rayParams)    
-
-	if result and result.Instance then    
-		local npc = result.Instance:FindFirstAncestorWhichIsA("Model")    
-		if npc and npc:FindFirstChildOfClass("Humanoid") then    
-			if AimlockPlayerEnabled then  
-				local targetPlayer = Players:GetPlayerFromCharacter(npc)  
-				if targetPlayer and isEnemy(targetPlayer) then  
-					setTarget(npc)  
-					return  
-				end  
-			end  
-
-			if AimlockNpcEnabled then  
-				local bossFolder = Workspace:FindFirstChild("Enemies")  
-				if bossFolder and npc:IsDescendantOf(bossFolder) then  
-					setTarget(npc)  
-					return  
-				end  
-			end  
-		end  
-	end  
-	setTarget(nil)
+	if AimlockNpcEnabled then
+		local targetBoss = getNearestBoss(500)
+		if targetBoss then
+			camera.CFrame = CFrame.new(camera.CFrame.Position, targetBoss.Position)
+			setTarget(targetBoss.Parent)
+		else
+			setTarget(nil)
+		end
+	end
 end)
-
 table.insert(connections, renderConnRaycast)
 
 -- =========================
