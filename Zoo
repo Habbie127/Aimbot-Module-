@@ -5,8 +5,6 @@ function AimlockModule.Init(player, char, camera)
 	local RunService = game:GetService("RunService")
 	local UserInputService = game:GetService("UserInputService")
 	local Workspace = game:GetService("Workspace")
-	local gui = player:WaitForChild("PlayerGui")
-	local cursorDot1 = gui:WaitForChild("MobileMouselock"):WaitForChild("Cursor")
 	
     if not char then
         player.CharacterAdded:Wait()
@@ -313,27 +311,6 @@ end)
 -- =========================
 -- Current Target Highlight & Health Watch
 -- =========================
-local function clearHighlight()
-    if currentHighlight then
-        currentHighlight:Destroy()
-        currentHighlight = nil
-    end
-end
-
-local function setHighlight(targetModel)
-    clearHighlight()
-    if targetModel then
-        local highlight = Instance.new("Highlight")
-        highlight.FillColor = Color3.fromRGB(255, 255, 0) -- yellow for aimlock target
-        highlight.OutlineColor = Color3.fromRGB(255, 255, 0)
-        highlight.FillTransparency = 0.5
-        highlight.OutlineTransparency = 0
-        highlight.Adornee = targetModel.PrimaryPart or targetModel:FindFirstChild("HumanoidRootPart") or targetModel
-        highlight.Parent = targetModel
-        currentHighlight = highlight
-    end
-end
-
 local function watchTargetHealth(targetModel)
     if healthConn then
         healthConn:Disconnect()
@@ -348,7 +325,7 @@ local function watchTargetHealth(targetModel)
             if newHealth < lastHealth then
                 tiltEnabled = true
                 if next(rightTouches) then
-                    startTilt() -- your tilt function
+                    startTilt()
                 end
             end
             lastHealth = newHealth
@@ -357,16 +334,38 @@ local function watchTargetHealth(targetModel)
 end
 
 local function setAimlockTarget(targetModel)
-    if targetModel ~= currentTarget then
-        currentTarget = targetModel
-        setHighlight(targetModel)
-        watchTargetHealth(targetModel)
+    if currentHighlight then
+        currentHighlight:Destroy()
+        currentHighlight = nil
     end
+
+    for _, h in pairs(highlights) do h.Enabled = true end
+    for _, h in pairs(bossHighlights) do h.Enabled = true end
+    
+    if targetModel then
+        if targetModel.Parent:IsA("Model") then
+            local p = targetModel.Parent
+            if highlights[p] then highlights[p].Enabled = false end
+            if bossHighlights[p] then bossHighlights[p].Enabled = false end
+        end
+
+        local highlight = Instance.new("Highlight")
+        highlight.FillColor = Color3.fromRGB(255, 255, 0)
+        highlight.OutlineColor = Color3.fromRGB(255, 255, 0)
+        highlight.FillTransparency = 0.5
+        highlight.OutlineTransparency = 0
+        highlight.Adornee = targetModel.PrimaryPart or targetModel:FindFirstChild("HumanoidRootPart") or targetModel
+        highlight.Parent = targetModel
+        currentHighlight = highlight
+        
+        if currentTarget ~= targetModel then
+            watchTargetHealth(targetModel)
+        end
+    end
+
+    currentTarget = targetModel
 end
 
--- =========================
--- Example: Update aimlock target (Players + NPCs)
--- =========================
 local renderConnTilt = RunService.RenderStepped:Connect(function()
     local target = nil
 
@@ -496,6 +495,8 @@ local function cleanup()
         h:Destroy()
     end
     bossHighlights = {}
+    
+    currentHighlight:Destroy()
 end
 
 -- =========================
@@ -535,6 +536,7 @@ end)
 			AimlockNpcEnabled = state
 			if not state then
 			    currentBossTarget = nil
+			    currentHighlight:Destroy()
 			end
 		end,
 		cleanup = cleanup
