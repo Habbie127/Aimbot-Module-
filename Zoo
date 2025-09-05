@@ -20,7 +20,6 @@ function AimlockModule.Init(player, char, camera)
 	local tiltEnabled = false
 	local rightTouches = {}
 	local tiltConn, preTiltCFrame, healthConn = nil, nil, nil
-	
 	local connections = {}
 	local currentEnemyTarget = nil
 	local currentBossTarget = nil
@@ -123,49 +122,6 @@ local function getNearestBoss(maxDistance)
 	end
 	return nearest
 end
-
--- =========================
--- Main Aimlock & Highlight Loop
--- =========================
-local renderConnMain = RunService.RenderStepped:Connect(function()
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    
-    if not tiltEnabled then
-        if AimlockPlayerEnabled then
-            if not currentEnemyTarget or not currentEnemyTarget.Parent 
-                or not currentEnemyTarget.Parent:FindFirstChildOfClass("Humanoid") 
-                or currentEnemyTarget.Parent:FindFirstChildOfClass("Humanoid").Health <= 0 then
-                currentEnemyTarget = getNearestEnemy(500)
-            end
-
-            if currentEnemyTarget then
-                local dist = (currentEnemyTarget.Position - camera.CFrame.Position).Magnitude
-                local tiltFactor = math.clamp(dist / 40, 0, 0.08)
-                local lookVector = (currentEnemyTarget.Position - camera.CFrame.Position).Unit
-                local tiltedLook = Vector3.new(lookVector.X, lookVector.Y - tiltFactor, lookVector.Z).Unit
-                camera.CFrame = CFrame.new(camera.CFrame.Position, camera.CFrame.Position + tiltedLook)
-            end
-        end
-
-        if AimlockNpcEnabled then
-            if not currentBossTarget or not currentBossTarget.Parent 
-                or not currentBossTarget.Parent:FindFirstChildOfClass("Humanoid") 
-                or currentBossTarget.Parent:FindFirstChildOfClass("Humanoid").Health <= 0 then
-                currentBossTarget = getNearestBoss(500)
-            end
-
-            if currentBossTarget then
-                local dist = (currentBossTarget.Position - camera.CFrame.Position).Magnitude
-                local tiltFactor = math.clamp(dist / 40, 0, 0.08)
-                local lookVector = (currentBossTarget.Position - camera.CFrame.Position).Unit
-                local tiltedLook = Vector3.new(lookVector.X, lookVector.Y - tiltFactor, lookVector.Z).Unit
-                camera.CFrame = CFrame.new(camera.CFrame.Position, camera.CFrame.Position + tiltedLook)
-            end
-        end
-    end
-end)
-table.insert(connections, renderConnMain)
 
 -- =========================
 -- Tilt Camera Function
@@ -290,12 +246,7 @@ local function setAimlockTarget(targetModel)
         currentHighlight = nil
     end
 
-    -- Re-enable all default highlights
-   -- for _, h in pairs(highlights) do h.Enabled = true end
-    --for _, h in pairs(bossHighlights) do h.Enabled = true end
-
     if not targetModel then
-        print("[Aimlock Debug] No target provided.")
         currentTarget = nil
         return
     end
@@ -304,13 +255,8 @@ local function setAimlockTarget(targetModel)
     local adorneePart = nil
     if targetModel:IsA("Model") then
         adorneePart = targetModel.PrimaryPart or targetModel:FindFirstChild("HumanoidRootPart") or targetModel:FindFirstChildWhichIsA("BasePart")
-        if not adorneePart then
-            print("[Aimlock Debug] Target is a Model but has no PrimaryPart or HumanoidRootPart.")
-        end
     elseif targetModel:IsA("BasePart") then
         adorneePart = targetModel
-    else
-        print("[Aimlock Debug] Target is neither a Model nor a Part. Type:", targetModel.ClassName)
     end
 
     if adorneePart then
@@ -334,15 +280,44 @@ local function setAimlockTarget(targetModel)
 end
 
 local renderConnTilt = RunService.RenderStepped:Connect(function()
-    local target = nil
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
 
-    if AimlockPlayerEnabled then
-        target = getNearestEnemy(500)
-    elseif AimlockNpcEnabled then
-        target = getNearestBoss(500)
+    if not tiltEnabled then
+        if AimlockPlayerEnabled then
+            if not currentEnemyTarget or not currentEnemyTarget.Parent 
+                or not currentEnemyTarget.Parent:FindFirstChildOfClass("Humanoid") 
+                or currentEnemyTarget.Parent:FindFirstChildOfClass("Humanoid").Health <= 0 then
+                currentEnemyTarget = getNearestEnemy(500)
+            end
+
+            if currentEnemyTarget then
+                local dist = (currentEnemyTarget.Position - camera.CFrame.Position).Magnitude
+                local tiltFactor = math.clamp(dist / 40, 0, 0.08)
+                local lookVector = (currentEnemyTarget.Position - camera.CFrame.Position).Unit
+                local tiltedLook = Vector3.new(lookVector.X, lookVector.Y - tiltFactor, lookVector.Z).Unit
+                camera.CFrame = CFrame.new(camera.CFrame.Position, camera.CFrame.Position + tiltedLook)
+            end
+        end
+
+        if AimlockNpcEnabled then
+            if not currentBossTarget or not currentBossTarget.Parent 
+                or not currentBossTarget.Parent:FindFirstChildOfClass("Humanoid") 
+                or currentBossTarget.Parent:FindFirstChildOfClass("Humanoid").Health <= 0 then
+                currentBossTarget = getNearestBoss(500)
+            end
+
+            if currentBossTarget then
+                local dist = (currentBossTarget.Position - camera.CFrame.Position).Magnitude
+                local tiltFactor = math.clamp(dist / 40, 0, 0.08)
+                local lookVector = (currentBossTarget.Position - camera.CFrame.Position).Unit
+                local tiltedLook = Vector3.new(lookVector.X, lookVector.Y - tiltFactor, lookVector.Z).Unit
+                camera.CFrame = CFrame.new(camera.CFrame.Position, camera.CFrame.Position + tiltedLook)
+            end
+        end
     end
 
-    setAimlockTarget(target)
+    setAimlockTarget(currentEnemyTarget, currentBossTarget)
 end)
 table.insert(connections, renderConnTilt)
 
