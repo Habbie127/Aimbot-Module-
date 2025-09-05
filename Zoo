@@ -27,7 +27,7 @@ function AimlockModule.Init(player, char, camera)
 	local currentEnemyTarget = nil
 	local currentBossTarget = nil
 	local currentHighlight = nil
-
+	
 -- =========================
 -- Team Check
 -- =========================
@@ -311,18 +311,8 @@ UserInputService.TouchEnded:Connect(function(touch)
 end)
 
 -- =========================
--- Target tracking with Dot cursor & Health detection (Players + NPCs)
+-- Current Target Highlight & Health Watch
 -- =========================
-local function getAllParts(model)
-    local parts = {}
-    for _, descendant in pairs(model:GetDescendants()) do
-        if descendant:IsA("BasePart") then
-            table.insert(parts, descendant)
-        end
-    end
-    return parts
-end
-
 local function clearHighlight()
     if currentHighlight then
         currentHighlight:Destroy()
@@ -330,12 +320,12 @@ local function clearHighlight()
     end
 end
 
-local function setHighlight(targetModel, color)
+local function setHighlight(targetModel)
     clearHighlight()
     if targetModel then
         local highlight = Instance.new("Highlight")
-        highlight.FillColor = color or Color3.fromRGB(255, 255, 0) -- default yellow
-        highlight.OutlineColor = color or Color3.fromRGB(255, 255, 0)
+        highlight.FillColor = Color3.fromRGB(255, 255, 0) -- yellow for aimlock target
+        highlight.OutlineColor = Color3.fromRGB(255, 255, 0)
         highlight.FillTransparency = 0.5
         highlight.OutlineTransparency = 0
         highlight.Adornee = targetModel.PrimaryPart or targetModel:FindFirstChild("HumanoidRootPart") or targetModel
@@ -344,97 +334,51 @@ local function setHighlight(targetModel, color)
     end
 end
 
-local function setTarget(targetModel)
-    if targetModel ~= currentTarget then
-        if healthConn then
-            healthConn:Disconnect()
-            healthConn = nil
-        end
+local function watchTargetHealth(targetModel)
+    if healthConn then
+        healthConn:Disconnect()
+        healthConn = nil
+    end
 
-        currentTarget = targetModel
-        clearHighlight()
-
-        if targetModel then
-            setHighlight(targetModel, Color3.fromRGB(255, 255, 0))
-
-            local humanoid = targetModel:FindFirstChildOfClass("Humanoid")
-            if humanoid then
-                local lastHealth = humanoid.Health
-                healthConn = humanoid.HealthChanged:Connect(function(newHealth)
-                    if currentTool then
-                        local toolName = currentTool.Name
-                        if (toolName == "Dough-Dough" and vActive) or (toolName == "Shark Anchor" and zActive) then
-                            if newHealth < lastHealth then
-                                tiltEnabled = true
-                                if next(rightTouches) then
-                                    startTilt()
-                                end
-                            end
-                        end
-                    end
-                    lastHealth = newHealth
-                end)
+    if not targetModel then return end
+    local humanoid = targetModel:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        local lastHealth = humanoid.Health
+        healthConn = humanoid.HealthChanged:Connect(function(newHealth)
+            if newHealth < lastHealth then
+                tiltEnabled = true
+                if next(rightTouches) then
+                    startTilt() -- your tilt function
+                end
             end
-        end
+            lastHealth = newHealth
+        end)
     end
 end
 
-local renderConnDot = RunService.RenderStepped:Connect(function()
-    if not cursorDot1 or not cursorDot1.Parent then
-        print("Cursor dot not ready")
-        return
+local function setAimlockTarget(targetModel)
+    if targetModel ~= currentTarget then
+        currentTarget = targetModel
+        setHighlight(targetModel)
+        watchTargetHealth(targetModel)
     end
+end
 
-
-    local dotPos = cursorDot1.AbsolutePosition + cursorDot1.AbsoluteSize / 2
-    local ray = camera:ScreenPointToRay(dotPos.X, dotPos.Y)
-
-    local rayParams = RaycastParams.new()
-    rayParams.FilterType = Enum.RaycastFilterType.Whitelist
-    rayParams.FilterDescendantsInstances = {}
-    if #rayParams.FilterDescendantsInstances == 0 then
-        rayParams.FilterType = Enum.RaycastFilterType.Blacklist
-        rayParams.FilterDescendantsInstances = {char} -- avoid hitting yourself
-    end
-
-    if AimlockNpcEnabled then
-        local enemiesFolder = Workspace:FindFirstChild("Enemies")
-        if enemiesFolder then
-            for _, npc in pairs(enemiesFolder:GetChildren()) do
-                if npc:FindFirstChildOfClass("Humanoid") then
-                    for _, part in pairs(getAllParts(npc)) do
-                        table.insert(rayParams.FilterDescendantsInstances, part)
-                    end
-                end
-            end
-        end
-    end
+-- =========================
+-- Example: Update aimlock target (Players + NPCs)
+-- =========================
+local renderConnTilt = RunService.RenderStepped:Connect(function()
+    local target = nil
 
     if AimlockPlayerEnabled then
-        for _, p in pairs(Players:GetPlayers()) do
-            if p ~= player and isEnemy(p) and p.Character then
-                for _, part in pairs(getAllParts(p.Character)) do
-                    table.insert(rayParams.FilterDescendantsInstances, part)
-                end
-            end
-        end
+        target = getNearestEnemy(500) -- nearest enemy player
+    elseif AimlockNpcEnabled then
+        target = getNearestBoss(500) -- nearest NPC
     end
 
-    local raycastResult = Workspace:Raycast(ray.Origin, ray.Direction * 1000, rayParams)
-    if raycastResult and raycastResult.Instance then
-        local model = raycastResult.Instance:FindFirstAncestorOfClass("Model")
-        if model and model:FindFirstChildOfClass("Humanoid") then
-            setTarget(model)
-            print("Dot cursor position:", dotPos)
-            print("Hit instance:", raycastResult.Instance:GetFullName())
-            return
-        end
-    end
-    
-    print("Ray missed all targets")
-    setTarget(nil)
+    setAimlockTarget(target)
 end)
-table.insert(connections, renderConnDot)
+table.insert(connections, renderConnTilt)
 
 -- =========================
 -- Tool equip / unequip 
