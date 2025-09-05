@@ -20,7 +20,7 @@ function AimlockModule.Init(player, char, camera)
 	local tiltEnabled = false
 	local rightTouches = {}
 	local tiltConn, preTiltCFrame, healthConn = nil, nil, nil
-	local highlights, bossHighlights = {}, {}
+	
 	local connections = {}
 	local currentEnemyTarget = nil
 	local currentBossTarget = nil
@@ -130,56 +130,6 @@ end
 local renderConnMain = RunService.RenderStepped:Connect(function()
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
-
-    for _, p in pairs(Players:GetPlayers()) do
-        if p ~= player and isEnemy(p) and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-            local humanoid = p.Character:FindFirstChildOfClass("Humanoid")
-            if humanoid and humanoid.Health > 0 then
-                if not highlights[p] then
-                    local highlight = Instance.new("Highlight")
-                    highlight.Adornee = p.Character
-                    highlight.FillColor = Color3.fromRGB(240, 248, 255)
-                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                    highlight.Parent = p.Character
-                    highlights[p] = highlight
-                end
-            else
-                if highlights[p] then
-                    highlights[p]:Destroy()
-                    highlights[p] = nil
-                end
-            end
-        else
-            if highlights[p] then
-                highlights[p]:Destroy()
-                highlights[p] = nil
-            end
-        end
-    end
-    
-    if AimlockNpcEnabled then
-        local bossFolder = Workspace:FindFirstChild("Enemies")
-        if bossFolder then
-            for _, boss in pairs(bossFolder:GetChildren()) do
-                local humanoid = boss:FindFirstChildOfClass("Humanoid")
-                if boss:FindFirstChild("HumanoidRootPart") and humanoid and humanoid.Health > 0 then
-                    if not bossHighlights[boss] then
-                        local highlight = Instance.new("Highlight")
-                        highlight.Adornee = boss
-                        highlight.FillColor = Color3.fromRGB(0, 0, 255)
-                        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                        highlight.Parent = boss
-                        bossHighlights[boss] = highlight
-                    end
-                end
-            end
-        end
-    else
-        for b, h in pairs(bossHighlights) do
-            if h then h:Destroy() end
-        end
-        bossHighlights = {}
-    end
     
     if not tiltEnabled then
         if AimlockPlayerEnabled then
@@ -341,25 +291,13 @@ local function setAimlockTarget(targetModel)
     end
 
     -- Re-enable all default highlights
-    for _, h in pairs(highlights) do h.Enabled = true end
-    for _, h in pairs(bossHighlights) do h.Enabled = true end
+   -- for _, h in pairs(highlights) do h.Enabled = true end
+    --for _, h in pairs(bossHighlights) do h.Enabled = true end
 
     if not targetModel then
         print("[Aimlock Debug] No target provided.")
         currentTarget = nil
         return
-    end
-
-    -- Disable the default highlight of the current target (if exists)
-    for playerKey, h in pairs(highlights) do
-        if playerKey.Character == targetModel then
-            h.Enabled = false
-        end
-    end
-    for bossKey, h in pairs(bossHighlights) do
-        if bossKey == targetModel then
-            h.Enabled = false
-        end
     end
 
     -- Find a proper adornee (use PrimaryPart or HumanoidRootPart)
@@ -382,8 +320,8 @@ local function setAimlockTarget(targetModel)
         highlight.OutlineColor = Color3.fromRGB(255, 255, 0)
         highlight.FillTransparency = 0.5
         highlight.OutlineTransparency = 0
-        highlight.Adornee = targetModel -- parent to model
-        highlight.Parent = targetModel
+        highlight.Adornee = adorneePart -- parent to model
+        highlight.Parent = workspace 
         currentHighlight = highlight
         print("[Aimlock Debug] Yellow highlight added to:", targetModel.Name)
 
@@ -515,15 +453,6 @@ local function cleanup()
         hookmetamethod(game, "__namecall", oldHook)
         oldHook = nil
     end
-
-    for _, h in pairs(highlights) do
-        h:Destroy()
-    end
-    highlights = {}
-    for _, h in pairs(bossHighlights) do
-        h:Destroy()
-    end
-    bossHighlights = {}
     
     currentHighlight:Destroy()
 end
