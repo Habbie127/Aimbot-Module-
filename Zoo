@@ -365,7 +365,7 @@ local function setAimlockTarget(targetModel)
     -- Find a proper adornee (use PrimaryPart or HumanoidRootPart)
     local adorneePart = nil
     if targetModel:IsA("Model") then
-        adorneePart = targetModel.PrimaryPart or targetModel:FindFirstChild("HumanoidRootPart") or targetModel:FindFirstChildWhichIsA("BasePart")
+        adorneePart = targetModel.PrimaryPart or targetModel:FindFirstChildWhichIsA("BasePart")
         if not adorneePart then
             print("[Aimlock Debug] Target is a Model but has no PrimaryPart or HumanoidRootPart.")
         end
