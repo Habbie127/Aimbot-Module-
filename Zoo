@@ -250,30 +250,22 @@ local function setAimlockTarget(targetModel)
         return
     end
 
-    local adorneePart = nil
     if targetModel:IsA("Model") then
-        adorneePart = targetModel.PrimaryPart or targetModel:FindFirstChild("HumanoidRootPart") or targetModel:FindFirstChildWhichIsA("BasePart")
-    elseif targetModel:IsA("BasePart") then
-        adorneePart = targetModel
-    end
-
-    if adorneePart then
         local highlight = Instance.new("Highlight")
         highlight.FillColor = Color3.fromRGB(255, 255, 0)
         highlight.OutlineColor = Color3.fromRGB(255, 255, 0)
         highlight.FillTransparency = 0.5
         highlight.OutlineTransparency = 0
-        highlight.Adornee = adorneePart -- parent to model
-        highlight.Parent = workspace 
+        highlight.Adornee = targetModel
+        highlight.Parent = targetModel
         currentHighlight = highlight
         print("[Aimlock Debug] Yellow highlight added to:", targetModel.Name)
 
         if currentTarget ~= targetModel then
             watchTargetHealth(targetModel)
         end
+        currentTarget = targetModel
     end
-
-    currentTarget = targetModel
 end
 
 local renderConnTilt = RunService.RenderStepped:Connect(function()
@@ -313,11 +305,17 @@ local renderConnTilt = RunService.RenderStepped:Connect(function()
     end
 
     if AimlockPlayerEnabled and currentEnemyTarget then
-        setAimlockTarget(currentEnemyTarget.Parent)  -- highlight enemy model
+        if currentTarget ~= currentEnemyTarget.Parent then
+            setAimlockTarget(currentEnemyTarget.Parent)
+        end
     elseif AimlockNpcEnabled and currentBossTarget then
-        setAimlockTarget(currentBossTarget.Parent)   -- highlight npc model
+        if currentTarget ~= currentBossTarget.Parent then
+            setAimlockTarget(currentBossTarget.Parent)
+        end
     else
-        setAimlockTarget(nil)
+        if currentTarget then
+            setAimlockTarget(nil)
+        end
     end
 end)
 table.insert(connections, renderConnTilt)
