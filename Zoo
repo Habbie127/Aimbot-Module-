@@ -12,8 +12,8 @@ function AimlockModule.Init(player, char, camera)
     end
     
 	local humanoid = char:WaitForChild("Humanoid")
-	local aimlockEnabled = false
-	local bossAimlockEnabled = false
+	local AimlockPlayerEnabled = false
+	local AimlockNpcEnabled = false
 	local FOV = 80
 	local OFFSET = Vector3.new(0, 2.8, 0)
 	local currentTarget = nil
@@ -175,33 +175,35 @@ local renderConnMain = RunService.RenderStepped:Connect(function()
             end
         end
     end
-
-    local bossFolder = Workspace:FindFirstChild("Enemies")
-    if bossFolder then
-        for _, boss in pairs(bossFolder:GetChildren()) do
-            local humanoid = boss:FindFirstChildOfClass("Humanoid")
-            if boss:FindFirstChild("HumanoidRootPart") and humanoid and humanoid.Health > 0 then
-                if not bossHighlights[boss] then
-                    local highlight = Instance.new("Highlight")
-                    highlight.Adornee = boss
-                    highlight.FillColor = Color3.fromRGB(0, 0, 255)
-                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                    highlight.Parent = boss
-                    bossHighlights[boss] = highlight
-                end
-            else
-                if bossHighlights[boss] then
-                    bossHighlights[boss]:Destroy()
-                    bossHighlights[boss] = nil
+    
+    if AimlockNpcEnabled then
+        local bossFolder = Workspace:FindFirstChild("Enemies")
+        if bossFolder then
+            for _, boss in pairs(bossFolder:GetChildren()) do
+                local humanoid = boss:FindFirstChildOfClass("Humanoid")
+                if boss:FindFirstChild("HumanoidRootPart") and humanoid and humanoid.Health > 0 then
+                    if not bossHighlights[boss] then
+                        local highlight = Instance.new("Highlight")
+                        highlight.Adornee = boss
+                        highlight.FillColor = Color3.fromRGB(0, 0, 255)
+                        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                        highlight.Parent = boss
+                        bossHighlights[boss] = highlight
+                    end
                 end
             end
         end
+    else
+        for b, h in pairs(bossHighlights) do
+            if h then h:Destroy() end
+        end
+        bossHighlights = {}
     end
     
     applySettings()
     
     if not tiltEnabled then
-        if aimlockEnabled then
+        if AimlockPlayerEnabled then
             if not currentEnemyTarget or not currentEnemyTarget.Parent 
                 or not currentEnemyTarget.Parent:FindFirstChildOfClass("Humanoid") 
                 or currentEnemyTarget.Parent:FindFirstChildOfClass("Humanoid").Health <= 0 then
@@ -217,7 +219,7 @@ local renderConnMain = RunService.RenderStepped:Connect(function()
             end
         end
 
-        if bossAimlockEnabled then
+        if AimlockNpcEnabled then
             if not currentBossTarget or not currentBossTarget.Parent 
                 or not currentBossTarget.Parent:FindFirstChildOfClass("Humanoid") 
                 or currentBossTarget.Parent:FindFirstChildOfClass("Humanoid").Health <= 0 then
@@ -391,7 +393,7 @@ end
 local renderConnRaycast = RunService.RenderStepped:Connect(function()
 	local whitelist = {}
 
-	if aimlockEnabled then  
+	if AimlockPlayerEnabled then  
 		for _, p in pairs(Players:GetPlayers()) do  
 			if p ~= player and isEnemy(p) and p.Character then  
 				table.insert(whitelist, p.Character)  
@@ -399,7 +401,7 @@ local renderConnRaycast = RunService.RenderStepped:Connect(function()
 		end  
 	end  
 
-	if bossAimlockEnabled then  
+	if AimlockNpcEnabled then  
 		local bossFolder = Workspace:FindFirstChild("Enemies")  
 		if bossFolder then  
 			for _, boss in pairs(bossFolder:GetChildren()) do  
@@ -419,7 +421,7 @@ local renderConnRaycast = RunService.RenderStepped:Connect(function()
 	if result and result.Instance then    
 		local npc = result.Instance:FindFirstAncestorWhichIsA("Model")    
 		if npc and npc:FindFirstChildOfClass("Humanoid") then    
-			if aimlockEnabled then  
+			if AimlockPlayerEnabled then  
 				local targetPlayer = Players:GetPlayerFromCharacter(npc)  
 				if targetPlayer and isEnemy(targetPlayer) then  
 					setTarget(npc)  
@@ -427,7 +429,7 @@ local renderConnRaycast = RunService.RenderStepped:Connect(function()
 				end  
 			end  
 
-			if bossAimlockEnabled then  
+			if AimlockNpcEnabled then  
 				local bossFolder = Workspace:FindFirstChild("Enemies")  
 				if bossFolder and npc:IsDescendantOf(bossFolder) then  
 					setTarget(npc)  
@@ -584,14 +586,20 @@ player.CharacterRemoving:Connect(function()
 end)
 
 	-- =========================
-
 	-- RETURN TABLE FOR MAIN SCRIPT USAGE
+	-- =========================
 	return {
 		toggleAimlock = function(state)
-			aimlockEnabled = state
+			AimlockPlayerEnabled = state
+			if not state then
+			    currentEnemyTarget = nil
+			end
 		end,
 		toggleBossAimlock = function(state)
-			bossAimlockEnabled = state
+			AimlockNpcEnabled = state
+			if not state then
+			    currentBossTarget = nil
+			end
 		end,
 		cleanup = cleanup
 	}
