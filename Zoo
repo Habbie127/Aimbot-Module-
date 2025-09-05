@@ -166,9 +166,9 @@ local function startTilt()
 
 	local tiltOffset
 	if humanoid.FloorMaterial ~= Enum.Material.Air then
-		tiltOffset = Vector3.new(0, 10, 0)
+		tiltOffset = Vector3.new(0, 6, 0)
 	else
-		tiltOffset = Vector3.new(0, 30, 0)
+		tiltOffset = Vector3.new(0, 15, 0)
 	end
 
 	local downLook = hrp.Position - tiltOffset
@@ -189,136 +189,6 @@ local function startTilt()
 		end
 	end)
 end
-
--- =========================
--- Touch tracking
--- =========================
-UserInputService.TouchStarted:Connect(function(touch)
-	if touch.Position.X > camera.ViewportSize.X / 2 then
-		rightTouches[touch] = true
-		if tiltEnabled then
-			startTilt()
-		end
-	end
-end)
-
-UserInputService.TouchEnded:Connect(function(touch)
-	if rightTouches[touch] then
-		rightTouches[touch] = nil
-		if not next(rightTouches) then
-			stopTiltSmooth()
-			tiltEnabled = false
-			vActive = false
-			zActive = false
-		end
-	end
-end)
-
--- =========================
--- Current Target Highlight & Health Watch
--- =========================
-local function watchTargetHealth(targetModel)
-    if healthConn then
-        healthConn:Disconnect()
-        healthConn = nil
-    end
-
-    if not targetModel then return end
-    local humanoid = targetModel:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        local lastHealth = humanoid.Health
-        healthConn = humanoid.HealthChanged:Connect(function(newHealth)
-            if newHealth < lastHealth then
-                tiltEnabled = true
-                if next(rightTouches) then
-                    startTilt()
-                end
-            end
-            lastHealth = newHealth
-        end)
-    end
-end
-
-local function setAimlockTarget(targetModel)
-    if currentHighlight then
-        currentHighlight:Destroy()
-        currentHighlight = nil
-    end
-
-    if not targetModel then
-        currentTarget = nil
-        return
-    end
-
-    if targetModel:IsA("Model") then
-        local highlight = Instance.new("Highlight")
-        highlight.FillColor = Color3.fromRGB(255, 255, 0)
-        highlight.OutlineColor = Color3.fromRGB(255, 255, 0)
-        highlight.FillTransparency = 0.5
-        highlight.OutlineTransparency = 0
-        highlight.Adornee = targetModel
-        highlight.Parent = targetModel
-        currentHighlight = highlight
-        print("[Aimlock Debug] Yellow highlight added to:", targetModel.Name)
-
-        if currentTarget ~= targetModel then
-            watchTargetHealth(targetModel)
-        end
-        currentTarget = targetModel
-    end
-end
-
-local renderConnTilt = RunService.RenderStepped:Connect(function()
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-
-    if not tiltEnabled then
-        if AimlockPlayerEnabled then
-            if not currentEnemyTarget or not currentEnemyTarget.Parent 
-                or not currentEnemyTarget.Parent:FindFirstChildOfClass("Humanoid") 
-                or currentEnemyTarget.Parent:FindFirstChildOfClass("Humanoid").Health <= 0 then
-                currentEnemyTarget = getNearestEnemy(500)
-            end
-
-            if currentEnemyTarget then
-                local dist = (currentEnemyTarget.Position - camera.CFrame.Position).Magnitude
-                local tiltFactor = math.clamp(dist / 40, 0, 0.08)
-                local lookVector = (currentEnemyTarget.Position - camera.CFrame.Position).Unit
-                local tiltedLook = Vector3.new(lookVector.X, lookVector.Y - tiltFactor, lookVector.Z).Unit
-                camera.CFrame = CFrame.new(camera.CFrame.Position, camera.CFrame.Position + tiltedLook)
-            end
-        elseif AimlockNpcEnabled then
-            if not currentBossTarget or not currentBossTarget.Parent 
-                or not currentBossTarget.Parent:FindFirstChildOfClass("Humanoid") 
-                or currentBossTarget.Parent:FindFirstChildOfClass("Humanoid").Health <= 0 then
-                currentBossTarget = getNearestBoss(500)
-            end
-
-            if currentBossTarget then
-                local dist = (currentBossTarget.Position - camera.CFrame.Position).Magnitude
-                local tiltFactor = math.clamp(dist / 40, 0, 0.08)
-                local lookVector = (currentBossTarget.Position - camera.CFrame.Position).Unit
-                local tiltedLook = Vector3.new(lookVector.X, lookVector.Y - tiltFactor, lookVector.Z).Unit
-                camera.CFrame = CFrame.new(camera.CFrame.Position, camera.CFrame.Position + tiltedLook)
-            end
-        end
-    end
-
-    if AimlockPlayerEnabled and currentEnemyTarget then
-        if currentTarget ~= currentEnemyTarget.Parent then
-            setAimlockTarget(currentEnemyTarget.Parent)
-        end
-    elseif AimlockNpcEnabled and currentBossTarget then
-        if currentTarget ~= currentBossTarget.Parent then
-            setAimlockTarget(currentBossTarget.Parent)
-        end
-    else
-        if currentTarget then
-            setAimlockTarget(nil)
-        end
-    end
-end)
-table.insert(connections, renderConnTilt)
 
 -- =========================
 -- Tool equip / unequip 
@@ -430,6 +300,143 @@ local function cleanup()
     
     currentHighlight:Destroy()
 end
+
+-- =========================
+-- Tilt trigger condition
+-- =========================
+local function canTilt()
+	return (currentTool and currentTool.Name == "Dough-Dough" and vActive)
+	    or (currentTool and currentTool.Name == "Shark Anchor" and zActive)
+end
+
+-- =========================
+-- Touch tracking
+-- =========================
+UserInputService.TouchStarted:Connect(function(touch)
+	if touch.Position.X > camera.ViewportSize.X / 2 then
+		rightTouches[touch] = true
+		if tiltEnabled and canTilt() then
+			startTilt()
+		end
+	end
+end)
+
+UserInputService.TouchEnded:Connect(function(touch)
+	if rightTouches[touch] then
+		rightTouches[touch] = nil
+		if not next(rightTouches) then
+			stopTiltSmooth()
+			tiltEnabled = false
+			vActive = false
+			zActive = false
+		end
+	end
+end)
+
+-- =========================
+-- Current Target Highlight & Health Watch
+-- =========================
+local function watchTargetHealth(targetModel)
+    if healthConn then
+        healthConn:Disconnect()
+        healthConn = nil
+    end
+
+    if not targetModel then return end
+    local humanoid = targetModel:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        local lastHealth = humanoid.Health
+        healthConn = humanoid.HealthChanged:Connect(function(newHealth)
+            if newHealth < lastHealth and canTilt() then
+                tiltEnabled = true
+                if next(rightTouches) then
+                    startTilt()
+                end
+            end
+            lastHealth = newHealth
+        end)
+    end
+end
+
+local function setAimlockTarget(targetModel)
+    if currentHighlight then
+        currentHighlight:Destroy()
+        currentHighlight = nil
+    end
+
+    if not targetModel then
+        currentTarget = nil
+        return
+    end
+
+    if targetModel:IsA("Model") then
+        local highlight = Instance.new("Highlight")
+        highlight.FillColor = Color3.fromRGB(255, 255, 0)
+        highlight.OutlineColor = Color3.fromRGB(255, 255, 0)
+        highlight.FillTransparency = 0.5
+        highlight.OutlineTransparency = 0
+        highlight.Adornee = targetModel
+        highlight.Parent = targetModel
+        currentHighlight = highlight
+
+        if currentTarget ~= targetModel then
+            watchTargetHealth(targetModel)
+        end
+        currentTarget = targetModel
+    end
+end
+
+local renderConnTilt = RunService.RenderStepped:Connect(function()
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    if not tiltEnabled then
+        if AimlockPlayerEnabled then
+            if not currentEnemyTarget or not currentEnemyTarget.Parent 
+                or not currentEnemyTarget.Parent:FindFirstChildOfClass("Humanoid") 
+                or currentEnemyTarget.Parent:FindFirstChildOfClass("Humanoid").Health <= 0 then
+                currentEnemyTarget = getNearestEnemy(500)
+            end
+
+            if currentEnemyTarget then
+                local dist = (currentEnemyTarget.Position - camera.CFrame.Position).Magnitude
+                local tiltFactor = math.clamp(dist / 40, 0, 0.08)
+                local lookVector = (currentEnemyTarget.Position - camera.CFrame.Position).Unit
+                local tiltedLook = Vector3.new(lookVector.X, lookVector.Y - tiltFactor, lookVector.Z).Unit
+                camera.CFrame = CFrame.new(camera.CFrame.Position, camera.CFrame.Position + tiltedLook)
+            end
+        elseif AimlockNpcEnabled then
+            if not currentBossTarget or not currentBossTarget.Parent 
+                or not currentBossTarget.Parent:FindFirstChildOfClass("Humanoid") 
+                or currentBossTarget.Parent:FindFirstChildOfClass("Humanoid").Health <= 0 then
+                currentBossTarget = getNearestBoss(500)
+            end
+
+            if currentBossTarget then
+                local dist = (currentBossTarget.Position - camera.CFrame.Position).Magnitude
+                local tiltFactor = math.clamp(dist / 40, 0, 0.08)
+                local lookVector = (currentBossTarget.Position - camera.CFrame.Position).Unit
+                local tiltedLook = Vector3.new(lookVector.X, lookVector.Y - tiltFactor, lookVector.Z).Unit
+                camera.CFrame = CFrame.new(camera.CFrame.Position, camera.CFrame.Position + tiltedLook)
+            end
+        end
+    end
+
+    if AimlockPlayerEnabled and currentEnemyTarget then
+        if currentTarget ~= currentEnemyTarget.Parent then
+            setAimlockTarget(currentEnemyTarget.Parent)
+        end
+    elseif AimlockNpcEnabled and currentBossTarget then
+        if currentTarget ~= currentBossTarget.Parent then
+            setAimlockTarget(currentBossTarget.Parent)
+        end
+    else
+        if currentTarget then
+            setAimlockTarget(nil)
+        end
+    end
+end)
+table.insert(connections, renderConnTilt)
 
 -- =========================
 -- lifecycle
