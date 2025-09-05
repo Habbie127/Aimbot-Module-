@@ -347,9 +347,20 @@ local function setTarget(npc)
 				healthConn = humanoid.HealthChanged:Connect(function(newHealth)
 					if currentTool then
 						local toolName = currentTool.Name
-						if (toolName == "Dough-Dough" and vActive) or (toolName == "Shark Anchor" and zActive) then
+						-- Check if Dough V skill active
+						if toolName == "Dough-Dough" and vActive then
 							if newHealth < lastHealth then
-								print(npc.Name .. " took damage, health: " .. newHealth)
+								print("[Dough V Skill] " .. npc.Name .. " took damage. Old HP: " .. lastHealth .. " | New HP: " .. newHealth)
+								tiltEnabled = true
+								if next(rightTouches) then
+									startTilt()
+								end
+							end
+						end
+						-- Check if Shark Anchor Z skill active
+						if toolName == "Shark Anchor" and zActive then
+							if newHealth < lastHealth then
+								print("[Shark Anchor Z Skill] " .. npc.Name .. " took damage. Old HP: " .. lastHealth .. " | New HP: " .. newHealth)
 								tiltEnabled = true
 								if next(rightTouches) then
 									startTilt()
