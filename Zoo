@@ -25,7 +25,6 @@ function AimlockModule.Init(player, char, camera)
 	local currentEnemyTarget = nil
 	local currentBossTarget = nil
 	local currentHighlight = nil
-	local adorneePart = nil
 	
 -- =========================
 -- Team Check
@@ -335,13 +334,13 @@ local function watchTargetHealth(targetModel)
 end
 
 local function setAimlockTarget(targetModel)
-    -- Remove previous highlight
+    -- Remove previous yellow highlight
     if currentHighlight then
         currentHighlight:Destroy()
         currentHighlight = nil
     end
 
-    -- Re-enable all other highlights
+    -- Re-enable all default highlights
     for _, h in pairs(highlights) do h.Enabled = true end
     for _, h in pairs(bossHighlights) do h.Enabled = true end
 
@@ -350,19 +349,25 @@ local function setAimlockTarget(targetModel)
         currentTarget = nil
         return
     end
-    
-    if targetModel then
-        if highlights[targetModel] then
-            highlights[targetModel].Enabled = false
-        elseif bossHighlights[targetModel] then
-            bossHighlights[targetModel].Enabled = false
+
+    -- Disable the default highlight of the current target (if exists)
+    for playerKey, h in pairs(highlights) do
+        if playerKey.Character == targetModel then
+            h.Enabled = false
+        end
+    end
+    for bossKey, h in pairs(bossHighlights) do
+        if bossKey == targetModel then
+            h.Enabled = false
         end
     end
 
+    -- Find a proper adornee (use PrimaryPart or HumanoidRootPart)
+    local adorneePart = nil
     if targetModel:IsA("Model") then
         adorneePart = targetModel.PrimaryPart or targetModel:FindFirstChild("HumanoidRootPart") or targetModel:FindFirstChildWhichIsA("BasePart")
         if not adorneePart then
-            print("[Aimlock Debug] Target is a Model but has no PrimaryPart, HumanoidRootPart, or BasePart.")
+            print("[Aimlock Debug] Target is a Model but has no PrimaryPart or HumanoidRootPart.")
         end
     elseif targetModel:IsA("BasePart") then
         adorneePart = targetModel
@@ -371,21 +376,20 @@ local function setAimlockTarget(targetModel)
     end
 
     if adorneePart then
+        -- Create yellow highlight
         local highlight = Instance.new("Highlight")
         highlight.FillColor = Color3.fromRGB(255, 255, 0)
         highlight.OutlineColor = Color3.fromRGB(255, 255, 0)
         highlight.FillTransparency = 0.5
         highlight.OutlineTransparency = 0
-        highlight.Adornee = adorneePart
+        highlight.Adornee = targetModel -- parent to model
         highlight.Parent = targetModel
         currentHighlight = highlight
         print("[Aimlock Debug] Yellow highlight added to:", targetModel.Name)
-        
+
         if currentTarget ~= targetModel then
             watchTargetHealth(targetModel)
         end
-    else
-        print("[Aimlock Debug] Could not assign adornee for highlight on target:", targetModel.Name)
     end
 
     currentTarget = targetModel
