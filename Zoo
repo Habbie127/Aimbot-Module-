@@ -351,16 +351,14 @@ local function setAimlockTarget(targetModel)
     end
 
     -- Disable the default highlight of the current target (if exists)
-    for playerKey, h in pairs(highlights) do
-        if playerKey.Character == targetModel then
-            h.Enabled = false
-        end
+    for _, h in pairs(highlights) do
+        h:Destroy()
     end
-    for bossKey, h in pairs(bossHighlights) do
-        if bossKey == targetModel then
-            h.Enabled = false
-        end
+    highlights = {}
+    for _, h in pairs(bossHighlights) do
+        h:Destroy()
     end
+    bossHighlights = {}
 
     -- Find a proper adornee (use PrimaryPart or HumanoidRootPart)
     local adorneePart = nil
