@@ -5,6 +5,8 @@ function AimlockModule.Init(player, char, camera)
 	local RunService = game:GetService("RunService")
 	local UserInputService = game:GetService("UserInputService")
 	local Workspace = game:GetService("Workspace")
+	local gui = player:WaitForChild("PlayerGui")
+	local cursorDot1 = gui:WaitForChild("MobileMouselock"):WaitForChild("Cursor")
 	
     if not char then
         player.CharacterAdded:Wait()
@@ -26,7 +28,8 @@ function AimlockModule.Init(player, char, camera)
 	local connections = {}
 	local currentEnemyTarget = nil
 	local currentBossTarget = nil
-
+	local currentHighlight = nil
+	
 -- =========================
 -- Ipad View
 -- =========================
@@ -42,6 +45,7 @@ end
 if player.Character then
 	applySettings()
 end
+
 
 -- =========================
 -- Team Check
@@ -329,38 +333,49 @@ UserInputService.TouchEnded:Connect(function(touch)
 end)
 
 -- =========================
--- Target tracking Health with Aimlock
+-- Target tracking with Dot cursor & Health detection (Players + NPCs)
 -- =========================
+local function clearHighlight()
+	if currentHighlight then
+		currentHighlight:Destroy()
+		currentHighlight = nil
+	end
+end
+
+local function setHighlight(npc)
+	clearHighlight()
+	if npc then
+		local highlight = Instance.new("Highlight")
+		highlight.FillColor = Color3.new(1, 1, 0) -- Yellow
+		highlight.OutlineColor = Color3.new(1, 1, 0)
+		highlight.FillTransparency = 0.5
+		highlight.OutlineTransparency = 0
+		highlight.Adornee = npc
+		highlight.Parent = npc
+		currentHighlight = highlight
+	end
+end
+
 local function setTarget(npc)
 	if npc ~= currentTarget then
 		if healthConn then
 			healthConn:Disconnect()
 			healthConn = nil
 		end
-		currentTarget = nil
+		currentTarget = npc
+		clearHighlight()
 
 		if npc then
-			currentTarget = npc
+			setHighlight(npc)
+
 			local humanoid = npc:FindFirstChildOfClass("Humanoid")
 			if humanoid then
 				local lastHealth = humanoid.Health
 				healthConn = humanoid.HealthChanged:Connect(function(newHealth)
 					if currentTool then
 						local toolName = currentTool.Name
-						-- Check if Dough V skill active
-						if toolName == "Dough-Dough" and vActive then
+						if (toolName == "Dough-Dough" and vActive) or (toolName == "Shark Anchor" and zActive) then
 							if newHealth < lastHealth then
-								print("[Dough V Skill] " .. npc.Name .. " took damage. Old HP: " .. lastHealth .. " | New HP: " .. newHealth)
-								tiltEnabled = true
-								if next(rightTouches) then
-									startTilt()
-								end
-							end
-						end
-						-- Check if Shark Anchor Z skill active
-						if toolName == "Shark Anchor" and zActive then
-							if newHealth < lastHealth then
-								print("[Shark Anchor Z Skill] " .. npc.Name .. " took damage. Old HP: " .. lastHealth .. " | New HP: " .. newHealth)
 								tiltEnabled = true
 								if next(rightTouches) then
 									startTilt()
@@ -375,31 +390,47 @@ local function setTarget(npc)
 	end
 end
 
-local renderConnRaycast = RunService.RenderStepped:Connect(function()
-	local hrp = char:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
+local renderConnDot = RunService.RenderStepped:Connect(function()
+	if not cursorDot1 or not cursorDot1.Parent then return end
 
-	if AimlockPlayerEnabled then
-		local target = getNearestEnemy(500)
-		if target then
-			camera.CFrame = CFrame.new(camera.CFrame.Position, target.Position)
-			setTarget(target.Parent)
-		else
-			setTarget(nil)
-		end
-	end
+	local dotPos = cursorDot1.AbsolutePosition + cursorDot1.AbsoluteSize / 2
+	local ray = camera:ScreenPointToRay(dotPos.X, dotPos.Y)
+
+	local rayParams = RaycastParams.new()
+	rayParams.FilterDescendantsInstances = {}
+	rayParams.FilterType = Enum.RaycastFilterType.Whitelist
 
 	if AimlockNpcEnabled then
-		local targetBoss = getNearestBoss(500)
-		if targetBoss then
-			camera.CFrame = CFrame.new(camera.CFrame.Position, targetBoss.Position)
-			setTarget(targetBoss.Parent)
-		else
-			setTarget(nil)
+		local enemiesFolder = Workspace:FindFirstChild("Enemies")
+		if enemiesFolder then
+			for _, npc in pairs(enemiesFolder:GetChildren()) do
+				if npc:FindFirstChildOfClass("Humanoid") then
+					table.insert(rayParams.FilterDescendantsInstances, npc)
+				end
+			end
 		end
 	end
+
+	if AimlockPlayerEnabled then
+		for _, p in pairs(Players:GetPlayers()) do
+			if p ~= player and isEnemy(p) and p.Character and p.Character:FindFirstChildOfClass("Humanoid") then
+				table.insert(rayParams.FilterDescendantsInstances, p.Character)
+			end
+		end
+	end
+
+	local raycastResult = Workspace:Raycast(ray.Origin, ray.Direction * 1000, rayParams)
+	if raycastResult and raycastResult.Instance then
+		local npc = raycastResult.Instance:FindFirstAncestorWhichIsA("Model")
+		if npc and npc:FindFirstChildOfClass("Humanoid") then
+			setTarget(npc)
+			return
+		end
+	end
+
+	setTarget(nil)
 end)
-table.insert(connections, renderConnRaycast)
+table.insert(connections, renderConnDot)
 
 -- =========================
 -- Tool equip / unequip 
