@@ -380,7 +380,11 @@ local function setTarget(targetModel)
 end
 
 local renderConnDot = RunService.RenderStepped:Connect(function()
-    if not cursorDot1 or not cursorDot1.Parent then return end
+    if not cursorDot1 or not cursorDot1.Parent then
+        print("Cursor dot not ready")
+        return
+    end
+
 
     local dotPos = cursorDot1.AbsolutePosition + cursorDot1.AbsoluteSize / 2
     local ray = camera:ScreenPointToRay(dotPos.X, dotPos.Y)
@@ -388,6 +392,10 @@ local renderConnDot = RunService.RenderStepped:Connect(function()
     local rayParams = RaycastParams.new()
     rayParams.FilterType = Enum.RaycastFilterType.Whitelist
     rayParams.FilterDescendantsInstances = {}
+    if #rayParams.FilterDescendantsInstances == 0 then
+        rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+        rayParams.FilterDescendantsInstances = {char} -- avoid hitting yourself
+    end
 
     if AimlockNpcEnabled then
         local enemiesFolder = Workspace:FindFirstChild("Enemies")
@@ -418,15 +426,12 @@ local renderConnDot = RunService.RenderStepped:Connect(function()
         if model and model:FindFirstChildOfClass("Humanoid") then
             setTarget(model)
             print("Dot cursor position:", dotPos)
-            if raycastResult then
-                print("Hit instance:", raycastResult.Instance:GetFullName())
-            else
-                print("Ray missed all targets")
-            end
+            print("Hit instance:", raycastResult.Instance:GetFullName())
             return
         end
     end
-
+    
+    print("Ray missed all targets")
     setTarget(nil)
 end)
 table.insert(connections, renderConnDot)
