@@ -26,7 +26,6 @@ function AimlockModule.Init(player, char, camera)
 	local connections = {}
 	local currentEnemyTarget = nil
 	local currentBossTarget = nil
-	local currentHighlight = nil
 
 -- =========================
 -- Ipad View
@@ -330,29 +329,8 @@ UserInputService.TouchEnded:Connect(function(touch)
 end)
 
 -- =========================
--- Target tracking Health with Raycast
+-- Target tracking Health with Aimlock
 -- =========================
-local function clearHighlight()
-	if currentHighlight then
-		currentHighlight:Destroy()
-		currentHighlight = nil
-	end
-end
-
-local function setHighlight(npc)
-	clearHighlight()
-	if npc then
-		local highlight = Instance.new("Highlight")
-		highlight.FillColor = Color3.new(1, 1, 0) -- Yellow
-		highlight.OutlineColor = Color3.new(1, 1, 0) -- Yellow outline
-		highlight.FillTransparency = 0.5
-		highlight.OutlineTransparency = 0
-		highlight.Adornee = npc
-		highlight.Parent = npc
-		currentHighlight = highlight
-	end
-end
-
 local function setTarget(npc)
 	if npc ~= currentTarget then
 		if healthConn then
@@ -360,32 +338,28 @@ local function setTarget(npc)
 			healthConn = nil
 		end
 		currentTarget = nil
-		clearHighlight()
-		applySettings()
 
-		if npc then  
-			currentTarget = npc  
-			setHighlight(npc)
-
-			local humanoid = npc:FindFirstChildOfClass("Humanoid")  
-			if humanoid then  
-				local lastHealth = humanoid.Health  
-				healthConn = humanoid.HealthChanged:Connect(function(newHealth)  
-					if currentTool then  
-						local toolName = currentTool.Name  
-						if (toolName == "Dough-Dough" and vActive) or (toolName == "Shark Anchor" and zActive) then  
-							if newHealth < lastHealth then  
-								tiltEnabled = true  
-								if next(rightTouches) then  
-									startTilt()  
-								end  
-							end  
-						end  
-					end  
-					lastHealth = newHealth  
-				end)  
-			end  
-		end  
+		if npc then
+			currentTarget = npc
+			local humanoid = npc:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				local lastHealth = humanoid.Health
+				healthConn = humanoid.HealthChanged:Connect(function(newHealth)
+					if currentTool then
+						local toolName = currentTool.Name
+						if (toolName == "Dough-Dough" and vActive) or (toolName == "Shark Anchor" and zActive) then
+							if newHealth < lastHealth then
+								tiltEnabled = true
+								if next(rightTouches) then
+									startTilt()
+								end
+							end
+						end
+					end
+					lastHealth = newHealth
+				end)
+			end
+		end
 	end
 end
 
