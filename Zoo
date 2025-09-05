@@ -349,6 +349,7 @@ local function setTarget(npc)
 						local toolName = currentTool.Name
 						if (toolName == "Dough-Dough" and vActive) or (toolName == "Shark Anchor" and zActive) then
 							if newHealth < lastHealth then
+								print(npc.Name .. " took damage, health: " .. newHealth)
 								tiltEnabled = true
 								if next(rightTouches) then
 									startTilt()
