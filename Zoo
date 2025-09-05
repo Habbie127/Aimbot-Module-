@@ -271,37 +271,6 @@ old = hookmetamethod(game, "__namecall", function(self, ...)
 end)
 
 -- =========================
--- Cleanup 
--- =========================
-local oldHook = old
-local function cleanup()
-    for _, conn in pairs(connections) do
-        if conn.Connected then conn:Disconnect() end
-    end
-    connections = {}
-
-    if healthConn then
-        healthConn:Disconnect()
-        healthConn = nil
-    end
-
-    disconnectTiltConn()
-    currentTool = nil
-    rightTouches = {}
-    vActive = false
-    zActive = false
-    tiltEnabled = false
-    preTiltCFrame = nil
-
-    if oldHook then
-        hookmetamethod(game, "__namecall", oldHook)
-        oldHook = nil
-    end
-    
-    currentHighlight:Destroy()
-end
-
--- =========================
 -- Tilt trigger condition
 -- =========================
 local function canTilt()
@@ -437,6 +406,36 @@ local renderConnTilt = RunService.RenderStepped:Connect(function()
     end
 end)
 table.insert(connections, renderConnTilt)
+
+-- =========================
+-- Cleanup 
+-- =========================
+local function cleanup()
+    for _, conn in pairs(connections) do
+        if conn.Connected then
+            conn:Disconnect()
+        end
+    end
+    connections = {}
+
+    if healthConn then
+        healthConn:Disconnect()
+        healthConn = nil
+    end
+
+    disconnectTiltConn()
+    currentTool = nil
+    rightTouches = {}
+    vActive = false
+    zActive = false
+    tiltEnabled = false
+    preTiltCFrame = nil
+
+    if currentHighlight and currentHighlight.Parent then
+        currentHighlight:Destroy()
+        currentHighlight = nil
+    end
+end
 
 -- =========================
 -- lifecycle
