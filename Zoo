@@ -334,22 +334,36 @@ local function watchTargetHealth(targetModel)
 end
 
 local function setAimlockTarget(targetModel)
+    -- Remove previous highlight
     if currentHighlight then
         currentHighlight:Destroy()
         currentHighlight = nil
     end
 
+    -- Re-enable all other highlights
     for _, h in pairs(highlights) do h.Enabled = true end
     for _, h in pairs(bossHighlights) do h.Enabled = true end
-    
-    if targetModel then
-        local adorneePart
-        if targetModel:IsA("Model") then
-            adorneePart = targetModel.PrimaryPart or targetModel:FindFirstChild("HumanoidRootPart") or targetModel:FindFirstChildWhichIsA("BasePart")
-        elseif targetModel:IsA("BasePart") then
-            adorneePart = targetModel
-        end
 
+    if not targetModel then
+        print("[Aimlock Debug] No target provided.")
+        currentTarget = nil
+        return
+    end
+
+    local adorneePart = nil
+
+    if targetModel:IsA("Model") then
+        adorneePart = targetModel.PrimaryPart or targetModel:FindFirstChild("HumanoidRootPart") or targetModel:FindFirstChildWhichIsA("BasePart")
+        if not adorneePart then
+            print("[Aimlock Debug] Target is a Model but has no PrimaryPart, HumanoidRootPart, or BasePart.")
+        end
+    elseif targetModel:IsA("BasePart") then
+        adorneePart = targetModel
+    else
+        print("[Aimlock Debug] Target is neither a Model nor a Part. Type:", targetModel.ClassName)
+    end
+
+    if adorneePart then
         local highlight = Instance.new("Highlight")
         highlight.FillColor = Color3.fromRGB(255, 255, 0)
         highlight.OutlineColor = Color3.fromRGB(255, 255, 0)
@@ -358,10 +372,13 @@ local function setAimlockTarget(targetModel)
         highlight.Adornee = adorneePart
         highlight.Parent = targetModel
         currentHighlight = highlight
+        print("[Aimlock Debug] Yellow highlight added to:", targetModel.Name)
         
         if currentTarget ~= targetModel then
             watchTargetHealth(targetModel)
         end
+    else
+        print("[Aimlock Debug] Could not assign adornee for highlight on target:", targetModel.Name)
     end
 
     currentTarget = targetModel
