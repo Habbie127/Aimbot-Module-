@@ -376,7 +376,9 @@ local renderConnDot = RunService.RenderStepped:Connect(function()
 	if not cursorDot1 or not cursorDot1.Parent then return end
 
 	local dotPos = cursorDot1.AbsolutePosition + cursorDot1.AbsoluteSize / 2
-	local ray = camera:ScreenPointToRay(dotPos.X, dotPos.Y)
+	local viewportPoint = Vector2.new(dotPos.X, dotPos.Y)
+	local ray = camera:ScreenPointToRay(viewportPoint.X, viewportPoint.Y)
+	
 
 	local rayParams = RaycastParams.new()
 	rayParams.FilterDescendantsInstances = {}
@@ -403,7 +405,7 @@ local renderConnDot = RunService.RenderStepped:Connect(function()
 
 	local raycastResult = Workspace:Raycast(ray.Origin, ray.Direction * 1000, rayParams)
 	if raycastResult and raycastResult.Instance then
-		local npc = raycastResult.Instance:FindFirstAncestorWhichIsA("Model")
+		local npc = raycastResult.Instance:FindFirstAncestorOfClass("Model")
 		if npc and npc:FindFirstChildOfClass("Humanoid") then
 			setTarget(npc)
 			return
