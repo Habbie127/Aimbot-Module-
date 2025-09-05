@@ -11,10 +11,11 @@ function AimlockModule.Init(player, char, camera)
         char = player.Character
     end
     
-	-- VARIABLES
 	local humanoid = char:WaitForChild("Humanoid")
 	local aimlockEnabled = false
 	local bossAimlockEnabled = false
+	local FOV = 80
+	local OFFSET = Vector3.new(0, 2.8, 0)
 	local currentTarget = nil
 	local currentTool = nil
 	local vActive, zActive = false, false
@@ -26,6 +27,23 @@ function AimlockModule.Init(player, char, camera)
 	local currentEnemyTarget = nil
 	local currentBossTarget = nil
 	local currentHighlight = nil
+
+-- =========================
+-- Ipad View
+-- =========================
+local function applySettings()
+	if not player.Character then return end
+	local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.CameraOffset = OFFSET
+	end
+	camera.FieldOfView = FOV
+end
+
+if player.Character then
+	applySettings()
+end
+
 
 -- =========================
 -- Team Check
@@ -179,7 +197,9 @@ local renderConnMain = RunService.RenderStepped:Connect(function()
             end
         end
     end
-
+    
+    applySettings()
+    
     if not tiltEnabled then
         if aimlockEnabled then
             if not currentEnemyTarget or not currentEnemyTarget.Parent 
@@ -266,6 +286,7 @@ local function startTilt()
 
 	local downLook = hrp.Position - tiltOffset
 	local targetCF = CFrame.new(camPos, downLook)
+	applySettings()
 
 	local alpha = 0
 	tiltConn = RunService.RenderStepped:Connect(function(dt)
@@ -339,6 +360,7 @@ local function setTarget(npc)
 		end
 		currentTarget = nil
 		clearHighlight()
+		applySettings()
 
 		if npc then  
 			currentTarget = npc  
@@ -543,6 +565,7 @@ end
 player.CharacterAdded:Connect(function(c)
 	cleanup()
 	char = c
+	applySettings()
 	humanoid = char:WaitForChild("Humanoid")
 	vActive = false
 	zActive = false
