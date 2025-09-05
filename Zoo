@@ -25,6 +25,7 @@ function AimlockModule.Init(player, char, camera)
 	local currentEnemyTarget = nil
 	local currentBossTarget = nil
 	local currentHighlight = nil
+	local adorneePart = nil
 	
 -- =========================
 -- Team Check
@@ -349,8 +350,14 @@ local function setAimlockTarget(targetModel)
         currentTarget = nil
         return
     end
-
-    local adorneePart = nil
+    
+    if targetModel then
+        if highlights[targetModel] then
+            highlights[targetModel].Enabled = false
+        elseif bossHighlights[targetModel] then
+            bossHighlights[targetModel].Enabled = false
+        end
+    end
 
     if targetModel:IsA("Model") then
         adorneePart = targetModel.PrimaryPart or targetModel:FindFirstChild("HumanoidRootPart") or targetModel:FindFirstChildWhichIsA("BasePart")
