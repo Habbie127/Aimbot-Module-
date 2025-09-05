@@ -417,6 +417,12 @@ local renderConnDot = RunService.RenderStepped:Connect(function()
         local model = raycastResult.Instance:FindFirstAncestorOfClass("Model")
         if model and model:FindFirstChildOfClass("Humanoid") then
             setTarget(model)
+            print("Dot cursor position:", dotPos)
+            if raycastResult then
+                print("Hit instance:", raycastResult.Instance:GetFullName())
+            else
+                print("Ray missed all targets")
+            end
             return
         end
     end
