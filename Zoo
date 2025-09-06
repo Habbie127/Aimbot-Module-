@@ -16,7 +16,7 @@ function AimlockModule.Init(player, char, camera)
 	local AimlockNpcEnabled = false
 	local currentTarget = nil
 	local currentTool = nil
-	local vActive, zActive = false, false
+	local vActive, sharkZActive, cursedZActive = false, false, false
 	local tiltEnabled = false
 	local rightTouches = {}
 	local tiltConn, preTiltCFrame, healthConn = nil, nil, nil
@@ -168,7 +168,7 @@ local function startTilt()
 	if humanoid.FloorMaterial ~= Enum.Material.Air then
 		tiltOffset = Vector3.new(0, 6, 0)
 	else
-		tiltOffset = Vector3.new(0, 15, 0)
+		tiltOffset = Vector3.new(0, 25, 0)
 	end
 
 	local downLook = hrp.Position - tiltOffset
@@ -199,7 +199,8 @@ local function hookTool(tool)
 		if not parent then
 			currentTool = nil
 			vActive = false
-			zActive = false
+			sharkZActive = false
+			cursedZActive = false
 			tiltEnabled = false
 			stopTiltSmooth()
 		end
@@ -216,7 +217,8 @@ char.ChildRemoved:Connect(function(child)
 	if child == currentTool then
 		currentTool = nil
 		vActive = false
-		zActive = false
+		sharkZActive = false
+		cursedZActive = false
 		tiltEnabled = false
 		stopTiltSmooth()
 	end
@@ -247,11 +249,23 @@ old = hookmetamethod(game, "__namecall", function(self, ...)
 
 		if typeof(a1) == "string" and a1:upper() == "Z" then
 			if currentTool and currentTool.Name == "Shark Anchor" then
-				zActive = true
+				sharkZActive = true
 				local stamp = os.clock()
 				task.delay(2, function()
 					if not tiltEnabled and os.clock() - stamp >= 2 then
-						zActive = false
+						sharkZActive = false
+					end
+				end)
+			end
+		end
+		
+		if typeof(a1) == "string" and a1:upper() == "Z" then
+			if currentTool and currentTool.Name == "CursedDualKatana" then
+				cursedZActive = true
+				local stamp = os.clock()
+				task.delay(2, function()
+					if not tiltEnabled and os.clock() - stamp >= 2 then
+						cursedZActive = false
 					end
 				end)
 			end
@@ -261,7 +275,7 @@ old = hookmetamethod(game, "__namecall", function(self, ...)
 			local arg1 = args[1]
 			if arg1 == false then
 				currentTool = nil
-				zActive = false
+				sharkZActive = false
 				tiltEnabled = false
 				stopTiltSmooth()
 			end
@@ -275,7 +289,30 @@ end)
 -- =========================
 local function canTilt()
 	return (currentTool and currentTool.Name == "Dough-Dough" and vActive)
-	    or (currentTool and currentTool.Name == "Shark Anchor" and zActive)
+	    or (currentTool and currentTool.Name == "Shark Anchor" and sharkZActive)
+	    or (currentTool and currentTool.Name == "CursedDualKatana" and cursedZActive)
+end
+
+-- =========================
+-- Swap function (integrated)
+-- =========================
+local function swapToGodhuman()
+	local char = player.Character
+	if not char then return end
+
+	local humanoid = char:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return end
+
+	local equipped = char:FindFirstChildOfClass("Tool")
+	if equipped and equipped.Name == "CursedDualKatana" then
+		humanoid:UnequipTools()
+
+		local backpack = player:WaitForChild("Backpack")
+		local godhuman = backpack:FindFirstChild("Godhuman")
+		if godhuman then
+			humanoid:EquipTool(godhuman)
+		end
+	end
 end
 
 -- =========================
@@ -295,9 +332,15 @@ UserInputService.TouchEnded:Connect(function(touch)
 		rightTouches[touch] = nil
 		if not next(rightTouches) then
 			stopTiltSmooth()
+			
+			if currentTool and currentTool.Name == "CursedDualKatana" and cursedZActive and tiltEnabled then
+				swapToGodhuman()
+			end
+
 			tiltEnabled = false
 			vActive = false
-			zActive = false
+			sharkZActive = false
+			cursedZActive = false
 		end
 	end
 end)
@@ -427,7 +470,8 @@ local function cleanup()
     currentTool = nil
     rightTouches = {}
     vActive = false
-    zActive = false
+    sharkZActive = false
+    cursedZActive = false
     tiltEnabled = false
     preTiltCFrame = nil
 
@@ -445,7 +489,8 @@ player.CharacterAdded:Connect(function(c)
 	char = c
 	humanoid = char:WaitForChild("Humanoid")
 	vActive = false
-	zActive = false
+	sharkZActive = false
+	cursedZActive = false
 	tiltEnabled = false
 	rightTouches = {}
 	stopTiltSmooth()
@@ -453,7 +498,8 @@ end)
 
 player.CharacterRemoving:Connect(function()
 	vActive = false
-	zActive = false
+	sharkZActive = false
+	cursedZActive = false
 	tiltEnabled = false
 	rightTouches = {}
 	disconnectTiltConn()
