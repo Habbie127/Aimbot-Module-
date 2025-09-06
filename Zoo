@@ -332,15 +332,15 @@ UserInputService.TouchEnded:Connect(function(touch)
 		rightTouches[touch] = nil
 		if not next(rightTouches) then
 			stopTiltSmooth()
-			
-			if currentTool and currentTool.Name == "CursedDualKatana" and cursedZActive and tiltEnabled then
+
+			if currentTool and currentTool.Name == "CursedDualKatana" and cursedZActive then
 				swapToGodhuman()
+				cursedZActive = false
 			end
 
 			tiltEnabled = false
 			vActive = false
 			sharkZActive = false
-			cursedZActive = false
 		end
 	end
 end)
