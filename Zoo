@@ -260,7 +260,7 @@ old = hookmetamethod(game, "__namecall", function(self, ...)
 		end
 		
 		if typeof(a1) == "string" and a1:upper() == "Z" then
-			if currentTool and currentTool.Name == "CursedDualKatana" then
+			if currentTool and currentTool.Name == "Cursed Dual Katana" then
 				cursedZActive = true
 				local stamp = os.clock()
 				task.delay(2, function()
@@ -290,7 +290,7 @@ end)
 local function canTilt()
 	return (currentTool and currentTool.Name == "Dough-Dough" and vActive)
 	    or (currentTool and currentTool.Name == "Shark Anchor" and sharkZActive)
-	    or (currentTool and currentTool.Name == "CursedDualKatana" and cursedZActive)
+	    or (currentTool and currentTool.Name == "Cursed Dual Katana" and cursedZActive)
 end
 
 -- =========================
@@ -304,7 +304,7 @@ local function swapToGodhuman()
 	if not humanoid then return end
 
 	local equipped = char:FindFirstChildOfClass("Tool")
-	if equipped and equipped.Name == "CursedDualKatana" then
+	if equipped and equipped.Name == "Cursed Dual Katana" then
 		humanoid:UnequipTools()
 
 		local backpack = player:WaitForChild("Backpack")
@@ -332,15 +332,15 @@ UserInputService.TouchEnded:Connect(function(touch)
 		rightTouches[touch] = nil
 		if not next(rightTouches) then
 			stopTiltSmooth()
-
-			if currentTool and currentTool.Name == "CursedDualKatana" and cursedZActive then
+			
+			if currentTool and currentTool.Name == "Cursed Dual Katana" and cursedZActive and tiltEnabled then
 				swapToGodhuman()
-				cursedZActive = false
 			end
 
 			tiltEnabled = false
 			vActive = false
 			sharkZActive = false
+			cursedZActive = false
 		end
 	end
 end)
