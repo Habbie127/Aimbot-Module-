@@ -290,7 +290,10 @@ end)
 local function canTilt()
 	return (currentTool and currentTool.Name == "Dough-Dough" and vActive)
 	    or (currentTool and currentTool.Name == "Shark Anchor" and sharkZActive)
-	    or (currentTool and currentTool.Name == "Cursed Dual Katana" and cursedZActive)
+end
+
+local function canSwap()
+	return (currentTool and currentTool.Name == "Cursed Dual Katana" and cursedZActive)
 end
 
 -- =========================
@@ -359,10 +362,16 @@ local function watchTargetHealth(targetModel)
     if humanoid then
         local lastHealth = humanoid.Health
         healthConn = humanoid.HealthChanged:Connect(function(newHealth)
-            if newHealth < lastHealth and canTilt() then
-                tiltEnabled = true
-                if next(rightTouches) then
-                    startTilt()
+            if newHealth < lastHealth then
+                if canTilt() then
+                    tiltEnabled = true
+                    if next(rightTouches) then
+                        startTilt()
+                    end
+                end
+
+                if canSwap() then
+                    tiltEnabled = true
                 end
             end
             lastHealth = newHealth
