@@ -356,20 +356,15 @@ local function watchTargetHealth(targetModel)
 
     if not targetModel then return end
     local humanoid = targetModel:FindFirstChildOfClass("Humanoid")
-    local stunTag = targetModel:FindFirstChild("Stun") -- the ObjectValue you mentioned
 
-    if humanoid and stunTag then
+    if humanoid then
         local lastHealth = humanoid.Health
         healthConn = humanoid.HealthChanged:Connect(function(newHealth)
             if newHealth < lastHealth and canTilt() then
-                if stunTag.Value == player then
-                    tiltEnabled = true
-                    if next(rightTouches) then
-                        startTilt()
-                    end
-                else
-                    print("Ignored tilt: Stun.Value not me")
-                end
+                tiltEnabled = true
+                if next(rightTouches) then
+                    startTilt()
+                end         
             end
             lastHealth = newHealth
         end)
