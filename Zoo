@@ -290,10 +290,7 @@ end)
 local function canTilt()
 	return (currentTool and currentTool.Name == "Dough-Dough" and vActive)
 	    or (currentTool and currentTool.Name == "Shark Anchor" and sharkZActive)
-end
-
-local function canSwap()
-	return (currentTool and currentTool.Name == "Cursed Dual Katana" and cursedZActive)
+	    or (currentTool and currentTool.Name == "Cursed Dual Katana" and cursedZActive)
 end
 
 -- =========================
@@ -359,19 +356,19 @@ local function watchTargetHealth(targetModel)
 
     if not targetModel then return end
     local humanoid = targetModel:FindFirstChildOfClass("Humanoid")
-    if humanoid then
+    local stunTag = targetModel:FindFirstChild("Stun") -- the ObjectValue you mentioned
+
+    if humanoid and stunTag then
         local lastHealth = humanoid.Health
         healthConn = humanoid.HealthChanged:Connect(function(newHealth)
-            if newHealth < lastHealth then
-                if canTilt() then
+            if newHealth < lastHealth and canTilt() then
+                if stunTag.Value == player then
                     tiltEnabled = true
                     if next(rightTouches) then
                         startTilt()
                     end
-                end
-
-                if canSwap() then
-                    tiltEnabled = true
+                else
+                    print("Ignored tilt: Stun.Value not me")
                 end
             end
             lastHealth = newHealth
