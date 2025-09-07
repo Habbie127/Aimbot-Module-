@@ -19,7 +19,7 @@ function AimlockModule.Init(player, char, camera)
 	local vActive, sharkZActive, cursedZActive = false, false, false
 	local tiltEnabled = false
 	local rightTouches = {}
-	local tiltConn, preTiltCFrame, healthConn = nil, nil, nil
+	local tiltConn, preTiltCFrame, dmgConn = nil, nil, nil
 	local connections = {}
 	local currentEnemyTarget = nil
 	local currentBossTarget = nil
@@ -346,30 +346,35 @@ UserInputService.TouchEnded:Connect(function(touch)
 end)
 
 -- =========================
--- Current Target Highlight & Health Watch
+-- Damage Counter Watch
 -- =========================
-local function watchTargetHealth(targetModel)
-    if healthConn then
-        healthConn:Disconnect()
-        healthConn = nil
+local function watchDamageCounter()
+    if dmgConn then
+        dmgConn:Disconnect()
+        dmgConn = nil
     end
 
-    if not targetModel then return end
-    local humanoid = targetModel:FindFirstChildOfClass("Humanoid")
+    local dmgCounterPath = player:WaitForChild("PlayerGui")
+        :WaitForChild("Main")
+        :WaitForChild("DmgCounter")
+        :WaitForChild("Text")
 
-    if humanoid then
-        local lastHealth = humanoid.Health
-        healthConn = humanoid.HealthChanged:Connect(function(newHealth)
-            if newHealth < lastHealth and canTilt() then
-                tiltEnabled = true
-                if next(rightTouches) then
-                    startTilt()
-                end         
+    dmgConn = dmgCounterPath:GetPropertyChangedSignal("Text"):Connect(function()
+        local dmgText = tonumber(dmgCounterPath.Text) or 0
+
+        if dmgText > 0 and canTilt() and currentHighlight then
+            tiltEnabled = true
+            if next(rightTouches) then
+                startTilt()
             end
-            lastHealth = newHealth
-        end)
-    end
+        else
+            tiltEnabled = false
+            stopTiltSmooth()
+        end
+    end)
+    table.insert(connections, dmgConn)
 end
+
 
 local function setAimlockTarget(targetModel)
     if currentHighlight then
@@ -393,7 +398,7 @@ local function setAimlockTarget(targetModel)
         currentHighlight = highlight
 
         if currentTarget ~= targetModel then
-            watchTargetHealth(targetModel)
+            watchDamageCounter()
         end
         currentTarget = targetModel
     end
@@ -462,9 +467,9 @@ local function cleanup()
     end
     connections = {}
 
-    if healthConn then
-        healthConn:Disconnect()
-        healthConn = nil
+    if dmgConn then
+        dmgConn:Disconnect()
+        dmgConn = nil
     end
 
     disconnectTiltConn()
